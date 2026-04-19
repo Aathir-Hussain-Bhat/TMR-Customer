@@ -2,173 +2,213 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Track My Ride</title>
-    <!-- Tailwind CSS -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Track My Ride Pro</title>
+    
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+
+    <!-- Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            -webkit-tap-highlight-color: transparent; 
+            background-color: #f4f4f5;
+        }
         ::-webkit-scrollbar { display: none; }
-        .pb-safe { padding-bottom: calc(env(safe-area-inset-bottom) + 90px); }
+        
+        /* Hardcoded fallback added to ensure scrolling clears bottom nav in all WebViews */
+        .pb-safe { padding-bottom: max(120px, calc(env(safe-area-inset-bottom) + 90px)); }
+        .pt-safe { padding-top: calc(env(safe-area-inset-top) + 10px); }
+        
         .tab-content { display: none; }
-        .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .tab-content.active { display: block; animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        
+        /* Premium UI Effects */
+        .glass-nav { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+        .glass-modal { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+        .squish { transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1); }
+        .squish:active { transform: scale(0.96); }
+        
+        @keyframes slideUpFade { 
+            from { opacity: 0; transform: translateY(12px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); }
+            50% { box-shadow: 0 0 25px rgba(239, 68, 68, 0.8); }
+        }
+        .badge-glow { animation: pulse-glow 2s infinite; }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 relative min-h-screen pb-safe">
+<body class="text-gray-900 relative min-h-screen pb-safe">
 
     <!-- SPLASH SCREEN -->
-    <div id="splash-screen" class="fixed inset-0 bg-white z-[80] flex flex-col items-center justify-center transition-opacity duration-500">
-        <div class="w-16 h-16 bg-black rounded-2xl flex items-center justify-center mb-4 shadow-lg animate-bounce">
-            <i class="fas fa-motorcycle text-white text-3xl"></i>
+    <div id="splash-screen" class="fixed inset-0 bg-black z-[100] flex flex-col items-center justify-center transition-all duration-700">
+        <div class="relative w-24 h-24 flex items-center justify-center mb-6">
+            <div class="absolute inset-0 bg-gradient-to-tr from-blue-600 to-purple-600 rounded-3xl blur-xl opacity-50 animate-pulse"></div>
+            <div class="w-20 h-20 bg-gray-900 rounded-3xl flex items-center justify-center shadow-2xl relative border border-gray-700">
+                <i class="fas fa-motorcycle text-white text-4xl"></i>
+            </div>
         </div>
-        <h1 class="text-4xl font-extrabold tracking-tight text-gray-900">TMR</h1>
-        <p class="text-xs font-bold text-gray-400 tracking-[0.2em] uppercase mt-2">Track My Ride</p>
-        <div class="mt-10 w-6 h-6 border-2 border-gray-100 border-t-black rounded-full animate-spin"></div>
+        <h1 class="text-4xl font-black tracking-tighter text-white">TMR <span class="text-blue-500">PRO</span></h1>
+        <p class="text-[10px] font-bold text-gray-400 tracking-[0.3em] uppercase mt-2">Track My Ride</p>
     </div>
 
     <!-- INITIAL SETUP SCREEN -->
-    <div id="setup-screen" class="fixed inset-0 bg-white z-[75] overflow-y-auto hidden px-6 py-10">
+    <div id="setup-screen" class="fixed inset-0 bg-white z-[90] overflow-y-auto hidden px-6 py-12 pt-safe">
         <div class="max-w-md mx-auto">
-            <div class="text-center mb-8">
-                <div class="w-16 h-16 bg-black text-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                    <i class="fas fa-user-plus text-2xl"></i>
+            <div class="text-center mb-10">
+                <div class="w-20 h-20 bg-gradient-to-br from-gray-900 to-black text-white rounded-[2rem] flex items-center justify-center mx-auto mb-5 shadow-[0_10px_40px_rgba(0,0,0,0.2)]">
+                    <i class="fas fa-flag-checkered text-3xl"></i>
                 </div>
-                <h1 class="text-3xl font-extrabold text-gray-900">Let's Setup</h1>
-                <p class="text-sm text-gray-500 mt-2">Enter your profile and bike details to get started.</p>
+                <h1 class="text-4xl font-black text-gray-900 tracking-tight">Your Garage.</h1>
+                <h1 class="text-4xl font-black text-gray-400 tracking-tight">Digitized.</h1>
             </div>
 
-            <form id="setup-form" class="space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">Full Name</label>
-                    <input type="text" id="setup-name" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-black focus:ring-1 focus:ring-black transition">
+            <form id="setup-form" class="space-y-5">
+                <div class="bg-gray-50 p-5 rounded-3xl border border-gray-100">
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Rider Profile</label>
+                    <input type="text" id="setup-name" placeholder="Full Name" required class="w-full bg-white border border-gray-200 rounded-xl px-4 py-3.5 text-sm font-medium outline-none focus:border-black focus:ring-1 focus:ring-black transition mb-3 shadow-sm">
+                    <input type="tel" id="setup-phone" placeholder="Phone Number" required class="w-full bg-white border border-gray-200 rounded-xl px-4 py-3.5 text-sm font-medium outline-none focus:border-black focus:ring-1 focus:ring-black transition shadow-sm">
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">Phone Number</label>
-                    <input type="tel" id="setup-phone" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-black transition">
+                
+                <div class="bg-gray-50 p-5 rounded-3xl border border-gray-100">
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">First Vehicle</label>
+                    <input type="text" id="setup-bike-model" placeholder="Make & Model (e.g. KTM Duke 390)" required class="w-full bg-white border border-gray-200 rounded-xl px-4 py-3.5 text-sm font-medium outline-none focus:border-black transition mb-3 shadow-sm">
+                    <input type="text" id="setup-bike-plate" placeholder="License Plate (e.g. MH01AB1234)" required class="w-full bg-white border border-gray-200 rounded-xl px-4 py-3.5 text-sm font-medium uppercase outline-none focus:border-black transition mb-3 shadow-sm">
+                    <input type="number" id="setup-bike-km" placeholder="Current Odometer (KM)" required class="w-full bg-white border border-gray-200 rounded-xl px-4 py-3.5 text-sm font-medium outline-none focus:border-black transition shadow-sm">
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">Bike Make & Model</label>
-                    <input type="text" id="setup-bike-model" placeholder="e.g. Royal Enfield Classic 350" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-black transition">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">Registration / Plate No.</label>
-                    <input type="text" id="setup-bike-plate" placeholder="e.g. JK01AB1234" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 uppercase outline-none focus:border-black transition">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">Current Odometer (KM)</label>
-                    <input type="number" id="setup-bike-km" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-black transition">
-                </div>
-                <button type="submit" class="w-full bg-black text-white font-bold rounded-xl py-4 mt-6 shadow-lg hover:bg-gray-800 transition">
-                    Save Profile & Continue <i class="fas fa-arrow-right ml-2"></i>
+                
+                <button type="submit" class="squish w-full bg-gradient-to-r from-gray-900 to-black text-white font-bold rounded-2xl py-4 mt-8 shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-2">
+                    Enter Garage <i class="fas fa-arrow-right"></i>
                 </button>
             </form>
         </div>
     </div>
 
     <!-- HEADER -->
-    <header class="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-[45] px-5 py-4 flex justify-between items-center">
+    <header class="glass-nav border-b border-gray-100 sticky top-0 z-[45] px-5 py-4 pt-safe flex justify-between items-center">
         <div>
-            <h1 class="text-xl font-extrabold tracking-tight text-gray-900">Track My Ride</h1>
-            <p id="header-greeting" class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Hello, Rider</p>
+            <h1 class="text-2xl font-black tracking-tighter text-gray-900">Garage</h1>
+            <p id="header-greeting" class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">--</p>
         </div>
-        <div class="flex gap-2">
-            <button onclick="openNotifications()" class="relative w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition text-gray-600 shadow-sm">
-                <i class="fas fa-bell text-sm"></i>
-                <span id="notif-badge" class="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white hidden animate-pulse"></span>
+        <div class="flex gap-3">
+            <button onclick="openNotifications()" class="squish relative w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-700 shadow-sm">
+                <i class="fas fa-bell"></i>
+                <span id="notif-badge" class="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white hidden badge-glow"></span>
             </button>
-            <button onclick="openCreatorWall()" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition text-gray-600 shadow-sm">
-                <i class="fas fa-info-circle text-sm"></i>
+            <button onclick="openCreatorWall()" class="squish w-10 h-10 bg-black rounded-full flex items-center justify-center text-white shadow-md">
+                <i class="fas fa-bolt text-yellow-400"></i>
             </button>
         </div>
     </header>
 
     <!-- MAIN CONTENT AREA -->
-    <main class="p-4">
+    <!-- Added pb-32 to guarantee enough space to clear the bottom nav -->
+    <main class="p-4 pb-32">
         
         <!-- TAB 1: HOME (DASHBOARD) -->
         <div id="tab-home" class="tab-content active">
-            <!-- BIKE SUMMARY CARD -->
-            <div class="bg-gray-900 text-white rounded-3xl shadow-xl overflow-hidden mb-6 relative border border-gray-800">
-                <div class="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-gray-800 rounded-full opacity-50 blur-2xl"></div>
+            <!-- PREMIUM BIKE CARD -->
+            <div class="bg-black text-white rounded-[2rem] shadow-2xl overflow-hidden mb-6 relative border border-gray-800 transform transition-all">
+                <div class="absolute -top-10 -right-10 w-48 h-48 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full opacity-30 blur-3xl"></div>
                 
                 <div class="p-6 relative z-10">
-                    <div class="flex justify-between items-start mb-6">
+                    <div class="flex justify-between items-start mb-8">
                         <div>
-                            <!-- Dropdown for multiple vehicles -->
-                            <div class="relative inline-block mb-1">
-                                <select id="vehicle-selector" onchange="switchActiveVehicle(this.value)" class="text-xs text-gray-300 font-bold uppercase tracking-widest bg-transparent outline-none cursor-pointer appearance-none pr-4 hover:text-white transition">
-                                    <!-- Injected via JS -->
+                            <div class="relative inline-block mb-1 bg-white/10 backdrop-blur-md px-3 py-1 rounded-lg border border-white/10 squish">
+                                <select id="vehicle-selector" onchange="switchActiveVehicle(this.value)" class="text-[10px] text-white font-bold uppercase tracking-widest bg-transparent outline-none cursor-pointer appearance-none pr-4">
                                 </select>
-                                <i class="fas fa-chevron-down text-gray-400 text-[10px] absolute right-0 top-[2px] pointer-events-none"></i>
+                                <i class="fas fa-chevron-down text-gray-400 text-[9px] absolute right-2.5 top-[7px] pointer-events-none"></i>
                             </div>
-                            
-                            <h2 id="ui-bike-model" class="text-2xl font-black tracking-tight">--</h2>
-                            <div class="inline-block bg-white/10 backdrop-blur-md px-3 py-1 rounded-lg mt-2 border border-white/10">
-                                <p id="ui-bike-plate" class="text-sm font-bold tracking-widest uppercase">--</p>
-                            </div>
+                            <h2 id="ui-bike-model" class="text-3xl font-black tracking-tighter mt-1">--</h2>
+                            <p id="ui-bike-plate" class="text-xs text-gray-400 font-bold tracking-widest uppercase mt-1">--</p>
                         </div>
-                        <div class="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center border border-white/5 shadow-inner">
-                            <i class="fas fa-motorcycle text-gray-300"></i>
+                        <div class="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 shadow-inner">
+                            <i class="fas fa-motorcycle text-xl text-white"></i>
                         </div>
                     </div>
 
-                    <!-- Dynamic Status Indicator -->
-                    <div id="ui-status-banner" class="w-full py-3 px-4 rounded-xl flex items-center justify-between font-bold text-sm mb-6 border bg-gray-800 text-white shadow-inner">
+                    <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-4 mb-6 flex justify-between items-center">
+                        <div>
+                            <p class="text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-1">Total Spent</p>
+                            <h3 class="text-xl font-black text-white">₹<span id="ui-total-cost">0</span></h3>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-1">Services</p>
+                            <h3 class="text-xl font-black text-white" id="ui-total-services">0</h3>
+                        </div>
+                    </div>
+
+                    <div id="ui-status-banner" class="w-full py-3 px-4 rounded-xl flex items-center justify-between font-bold text-sm mb-6 bg-white/10 backdrop-blur border border-white/20">
                         <span>Loading Status...</span>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4 border-t border-gray-700/50 pt-5">
-                        <div>
-                            <p class="text-[10px] text-gray-400 uppercase tracking-wider font-bold mb-1"><i class="fas fa-check-circle mr-1"></i> Last Service</p>
-                            <p id="ui-last-date" class="font-semibold text-sm">--</p>
-                            <p id="ui-last-km" class="text-xs text-gray-400 mt-0.5">-- KM</p>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-white/5 rounded-xl p-3 border border-white/5">
+                            <p class="text-[9px] text-gray-400 uppercase tracking-widest font-bold mb-1"><i class="fas fa-history mr-1"></i> Last Serviced</p>
+                            <p id="ui-last-date" class="font-bold text-sm text-white">--</p>
+                            <p id="ui-last-km" class="text-xs text-blue-400 font-semibold mt-0.5">-- KM</p>
                         </div>
-                        <div class="border-l border-gray-700/50 pl-4">
-                            <p class="text-[10px] text-gray-400 uppercase tracking-wider font-bold mb-1"><i class="fas fa-wrench mr-1 text-gray-300"></i> Next Service Due</p>
-                            <p id="ui-next-date" class="font-semibold text-sm">--</p>
-                            <p id="ui-next-km" class="text-xs text-gray-400 mt-0.5">-- KM</p>
+                        <div class="bg-white/5 rounded-xl p-3 border border-white/5">
+                            <p class="text-[9px] text-gray-400 uppercase tracking-widest font-bold mb-1"><i class="fas fa-forward mr-1"></i> Next Due</p>
+                            <p id="ui-next-date" class="font-bold text-sm text-white">--</p>
+                            <p id="ui-next-km" class="text-xs text-red-400 font-semibold mt-0.5">-- KM</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- RECENT SERVICES (HOME) -->
+            <!-- QUICK ACTIONS -->
+            <div class="grid grid-cols-2 gap-3 mb-6">
+                <button onclick="openAddService()" class="squish bg-white border border-gray-200 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 shadow-sm">
+                    <div class="w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-lg"><i class="fas fa-plus"></i></div>
+                    <span class="text-xs font-bold text-gray-700">Log Service</span>
+                </button>
+                <button onclick="switchTab('docs'); setTimeout(openAddDocument, 100)" class="squish bg-white border border-gray-200 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 shadow-sm">
+                    <div class="w-10 h-10 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center text-lg"><i class="fas fa-file-upload"></i></div>
+                    <span class="text-xs font-bold text-gray-700">Add Doc</span>
+                </button>
+            </div>
+
+            <!-- RECENT SERVICES -->
             <div>
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center">
-                        <i class="fas fa-bolt text-yellow-500 mr-2"></i> Recent Activity
-                    </h3>
-                    <button onclick="switchTab('services')" class="text-xs font-bold text-blue-600 hover:text-blue-800">View All</button>
+                <div class="flex justify-between items-center mb-4 px-1">
+                    <h3 class="text-sm font-black text-gray-900 uppercase tracking-wider flex items-center">Recent Logs</h3>
+                    <button onclick="switchTab('services')" class="text-xs font-bold text-gray-500 hover:text-black transition">See All</button>
                 </div>
-                <div id="home-recent-services" class="space-y-3">
-                    <!-- Injected by JS -->
-                </div>
+                <div id="home-recent-services" class="space-y-3 pb-8"></div>
             </div>
         </div>
 
         <!-- TAB 2: SERVICES -->
         <div id="tab-services" class="tab-content">
-            <div class="flex justify-between items-center mb-5">
-                <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center">
-                    <i class="fas fa-history text-gray-400 mr-2"></i> Service History
-                </h3>
-                <button onclick="openAddService()" class="bg-black text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow hover:bg-gray-800 transition">
-                    <i class="fas fa-plus mr-1"></i> Add Record
+            <div class="flex justify-between items-center mb-6 px-1">
+                <h3 class="text-2xl font-black text-gray-900 tracking-tight">Timeline</h3>
+                <button onclick="openAddService()" class="squish bg-black text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md">
+                    <i class="fas fa-plus mr-1"></i> New
                 </button>
             </div>
             
-            <div id="ui-timeline" class="relative border-l-2 border-gray-200 ml-3 space-y-6 pb-6">
-                <!-- Timeline items injected by JS -->
-            </div>
+            <div id="ui-timeline" class="relative border-l-2 border-gray-200 ml-4 space-y-8 pb-12 mt-4"></div>
             
-            <div id="empty-state" class="text-center py-10 hidden">
-                <i class="fas fa-clipboard-list text-4xl text-gray-300 mb-3"></i>
-                <h3 class="text-lg font-bold text-gray-800">No Services Logged</h3>
-                <p class="text-sm text-gray-500 mt-1 mb-4">You haven't logged any service records for this vehicle yet.</p>
-                <button onclick="openAddService()" class="bg-black text-white px-4 py-2 rounded-xl text-sm font-bold shadow hover:bg-gray-800 transition">
+            <div id="empty-state" class="text-center py-16 hidden">
+                <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-clipboard-list text-4xl text-gray-300"></i>
+                </div>
+                <h3 class="text-xl font-black text-gray-900">Clean Slate</h3>
+                <p class="text-sm text-gray-500 mt-2 mb-6 max-w-[200px] mx-auto">No maintenance records found for this vehicle.</p>
+                <button onclick="openAddService()" class="squish bg-black text-white px-6 py-3 rounded-2xl text-sm font-bold shadow-xl">
                     Log First Service
                 </button>
             </div>
@@ -176,479 +216,480 @@
 
         <!-- TAB 3: WORKSHOPS -->
         <div id="tab-workshops" class="tab-content">
-            <div class="flex justify-between items-center mb-5">
-                <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center">
-                    <i class="fas fa-tools text-gray-400 mr-2"></i> My Workshops
-                </h3>
-                <button onclick="openAddWorkshop()" class="bg-black text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow hover:bg-gray-800 transition">
-                    <i class="fas fa-plus mr-1"></i> Add New
+            <div class="flex justify-between items-center mb-6 px-1">
+                <h3 class="text-2xl font-black text-gray-900 tracking-tight">Workshops</h3>
+                <button onclick="openAddWorkshop()" class="squish bg-black text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md">
+                    <i class="fas fa-plus mr-1"></i> Add
                 </button>
             </div>
-
-            <div id="workshops-list" class="space-y-4">
-                <!-- Injected via JS -->
-            </div>
+            <div id="workshops-list" class="pb-8"></div>
         </div>
 
         <!-- TAB 4: DOCUMENTS -->
         <div id="tab-docs" class="tab-content">
-            <div class="flex justify-between items-center mb-5">
-                <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center">
-                    <i class="fas fa-folder text-gray-400 mr-2"></i> My Documents
-                </h3>
-                <button onclick="openAddDocument()" class="bg-black text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow hover:bg-gray-800 transition">
-                    <i class="fas fa-plus mr-1"></i> Upload
+            <div class="flex justify-between items-center mb-6 px-1">
+                <h3 class="text-2xl font-black text-gray-900 tracking-tight">Vault</h3>
+                <button onclick="openAddDocument()" class="squish bg-black text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md">
+                    <i class="fas fa-upload mr-1"></i> Upload
                 </button>
             </div>
-
-            <div id="documents-list" class="grid grid-cols-2 gap-4">
-                <!-- Injected via JS -->
-            </div>
+            <div id="documents-list" class="grid grid-cols-2 gap-4 pb-8"></div>
         </div>
 
         <!-- TAB 5: PROFILE -->
         <div id="tab-profile" class="tab-content">
-            <div class="flex justify-between items-center mb-5">
-                <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center">
-                    <i class="fas fa-user-circle text-gray-400 mr-2"></i> My Profile
-                </h3>
-                <button onclick="openEditProfile()" class="text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-100 transition">
-                    <i class="fas fa-pen mr-1"></i> Edit
-                </button>
-            </div>
+            <h3 class="text-2xl font-black text-gray-900 tracking-tight mb-6 px-1">Settings</h3>
 
-            <div class="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm mb-4">
-                <div>
-                    <p class="text-xs text-gray-400 font-bold uppercase tracking-wider">Name</p>
-                    <p id="prof-name" class="font-semibold text-gray-900 mt-1">--</p>
-                </div>
-                <div class="mt-3">
-                    <p class="text-xs text-gray-400 font-bold uppercase tracking-wider">Phone</p>
-                    <p id="prof-phone" class="font-semibold text-gray-900 mt-1">--</p>
-                </div>
-                
-                <hr class="border-gray-100 my-4">
-                
-                <div class="flex justify-between items-center mb-3">
-                    <p class="text-xs text-gray-800 font-bold uppercase tracking-wider"><i class="fas fa-motorcycle text-gray-400 mr-1"></i> Saved Vehicles</p>
-                    <button onclick="openAddVehicle()" class="text-[10px] bg-gray-100 text-gray-700 px-2 py-1 rounded font-bold hover:bg-gray-200 transition">
-                        + Add Vehicle
+            <div class="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100 mb-6 relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-gray-50 rounded-bl-[100px] -z-10"></div>
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <h2 id="prof-name" class="text-2xl font-black text-gray-900">--</h2>
+                        <p id="prof-phone" class="text-sm font-medium text-gray-500 mt-1">--</p>
+                    </div>
+                    <button onclick="openEditProfile()" class="squish w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600">
+                        <i class="fas fa-pen text-sm"></i>
                     </button>
                 </div>
                 
-                <div id="profile-vehicles-list" class="space-y-3">
-                    <!-- Injected via JS -->
+                <div class="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                    <div class="flex justify-between items-center mb-3">
+                        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">My Garage</p>
+                        <button onclick="openAddVehicle()" class="squish text-[10px] bg-white border border-gray-200 text-gray-800 px-3 py-1.5 rounded-lg font-bold shadow-sm">
+                            <i class="fas fa-plus mr-1"></i> Add
+                        </button>
+                    </div>
+                    <div id="profile-vehicles-list" class="space-y-2 mt-3"></div>
                 </div>
             </div>
 
-            <!-- Beautiful About Creator Option -->
-            <div onclick="openCreatorWall()" class="bg-gradient-to-r from-gray-900 to-black rounded-2xl p-4 flex justify-between items-center cursor-pointer shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02] mb-6">
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center text-white border border-white/20">
-                        <i class="fas fa-user-ninja text-xl"></i>
+            <!-- Pro Creator Wall Banner -->
+            <div onclick="openCreatorWall()" class="squish bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl p-5 flex justify-between items-center shadow-[0_10px_30px_rgba(79,70,229,0.3)] cursor-pointer mb-6 border border-white/20 relative overflow-hidden">
+                <div class="absolute -right-10 -bottom-10 opacity-20"><i class="fas fa-code text-9xl text-white"></i></div>
+                <div class="flex items-center gap-4 relative z-10">
+                    <div class="w-12 h-12 bg-white/20 backdrop-blur rounded-full flex items-center justify-center text-white border border-white/30">
+                        <i class="fas fa-crown text-xl"></i>
                     </div>
                     <div>
-                        <h4 class="text-white font-bold text-sm tracking-wide">About the Creator</h4>
-                        <p class="text-gray-400 text-[10px] uppercase tracking-[0.2em] mt-1 font-bold">Bhat Boyka</p>
+                        <h4 class="text-white font-black text-lg tracking-tight">Meet the Dev</h4>
+                        <p class="text-white/70 text-[10px] uppercase tracking-[0.2em] mt-0.5 font-bold">Bhat Boyka</p>
                     </div>
                 </div>
-                <i class="fas fa-chevron-right text-gray-400 text-sm mr-2"></i>
+                <i class="fas fa-arrow-right text-white relative z-10"></i>
             </div>
             
-            <button onclick="resetApp()" class="w-full bg-red-50 text-red-600 border border-red-200 font-bold py-3 rounded-xl hover:bg-red-100 transition shadow-sm">
-                Reset Profile & All Data
-            </button>
-            
-        </div>
+            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 px-2">Data Management</p>
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <button onclick="exportData()" class="squish bg-white border border-gray-200 text-gray-800 font-bold py-3.5 rounded-2xl shadow-sm text-sm flex items-center justify-center gap-2">
+                    <i class="fas fa-cloud-download-alt text-green-500 text-lg"></i> Backup
+                </button>
+                <label class="squish bg-white border border-gray-200 text-gray-800 font-bold py-3.5 rounded-2xl shadow-sm text-sm flex items-center justify-center gap-2 cursor-pointer">
+                    <i class="fas fa-cloud-upload-alt text-blue-500 text-lg"></i> Restore
+                    <input type="file" class="hidden" accept=".json" onchange="importData(event)">
+                </label>
+            </div>
 
+            <button onclick="resetApp()" class="squish w-full bg-red-50 text-red-600 border border-red-100 font-bold py-4 rounded-2xl text-sm flex justify-center items-center gap-2">
+                <i class="fas fa-trash-alt"></i> Delete All Data
+            </button>
+            <p class="text-center text-[10px] text-gray-400 font-medium mt-6 mb-4">Track My Ride Pro v2.0</p>
+        </div>
     </main>
 
-    <!-- BOTTOM NAVIGATION -->
-    <nav class="fixed bottom-0 w-full bg-white border-t border-gray-200 flex justify-around items-center pt-3 pb-6 px-1 z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-        <button onclick="switchTab('home')" id="nav-home" class="nav-btn text-black flex flex-col items-center gap-1 w-14 transition-colors">
-            <i class="fas fa-home text-xl"></i>
-            <span class="text-[10px] font-bold">Home</span>
+    <!-- PREMIUM BOTTOM NAVIGATION -->
+    <nav class="glass-nav fixed bottom-0 w-full border-t border-gray-200/50 flex justify-around items-center pt-3 pb-safe px-2 z-40">
+        <button onclick="switchTab('home')" id="nav-home" class="nav-btn squish text-blue-600 flex flex-col items-center gap-1 w-16 transition-colors">
+            <i class="fas fa-home text-xl mb-0.5"></i>
+            <span class="text-[9px] font-bold tracking-wide">Home</span>
         </button>
-        <button onclick="switchTab('services')" id="nav-services" class="nav-btn text-gray-400 hover:text-black flex flex-col items-center gap-1 w-14 transition-colors">
-            <i class="fas fa-wrench text-xl"></i>
-            <span class="text-[10px] font-bold">Services</span>
+        <button onclick="switchTab('services')" id="nav-services" class="nav-btn squish text-gray-400 flex flex-col items-center gap-1 w-16 transition-colors">
+            <i class="fas fa-wrench text-xl mb-0.5"></i>
+            <span class="text-[9px] font-bold tracking-wide">Services</span>
         </button>
-        <button onclick="switchTab('workshops')" id="nav-workshops" class="nav-btn text-gray-400 hover:text-black flex flex-col items-center gap-1 w-14 transition-colors">
-            <i class="fas fa-tools text-xl"></i>
-            <span class="text-[10px] font-bold">Shops</span>
+        <button onclick="switchTab('workshops')" id="nav-workshops" class="nav-btn squish text-gray-400 flex flex-col items-center gap-1 w-16 transition-colors">
+            <i class="fas fa-map-marker-alt text-xl mb-0.5"></i>
+            <span class="text-[9px] font-bold tracking-wide">Garages</span>
         </button>
-        <button onclick="switchTab('docs')" id="nav-docs" class="nav-btn text-gray-400 hover:text-black flex flex-col items-center gap-1 w-14 transition-colors">
-            <i class="fas fa-folder text-xl"></i>
-            <span class="text-[10px] font-bold">Docs</span>
+        <button onclick="switchTab('docs')" id="nav-docs" class="nav-btn squish text-gray-400 flex flex-col items-center gap-1 w-16 transition-colors">
+            <i class="fas fa-folder-open text-xl mb-0.5"></i>
+            <span class="text-[9px] font-bold tracking-wide">Vault</span>
         </button>
-        <button onclick="switchTab('profile')" id="nav-profile" class="nav-btn text-gray-400 hover:text-black flex flex-col items-center gap-1 w-14 transition-colors">
-            <i class="fas fa-user text-xl"></i>
-            <span class="text-[10px] font-bold">Profile</span>
+        <button onclick="switchTab('profile')" id="nav-profile" class="nav-btn squish text-gray-400 flex flex-col items-center gap-1 w-16 transition-colors">
+            <i class="fas fa-user-circle text-xl mb-0.5"></i>
+            <span class="text-[9px] font-bold tracking-wide">Profile</span>
         </button>
     </nav>
 
 
     <!-- ========================================== -->
-    <!-- MODALS & OVERLAYS                          -->
+    <!-- MODALS (ALL INCLUDED & FUNCTIONAL)         -->
     <!-- ========================================== -->
 
-    <!-- NOTIFICATIONS OVERLAY (Enhanced Progress Bar) -->
-    <div id="notif-modal" class="fixed inset-0 bg-black/50 z-[60] hidden flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
-        <div class="bg-white rounded-3xl w-full max-w-sm p-6 relative shadow-2xl">
-            <button onclick="closeNotifications()" class="absolute top-4 right-4 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-200 transition">
+    <!-- Notifications Modal -->
+    <div id="notif-modal" class="fixed inset-0 bg-black/60 z-[60] hidden flex items-center justify-center p-4 backdrop-blur-md transition-opacity">
+        <div class="glass-modal rounded-[2rem] w-full max-w-sm p-6 relative shadow-2xl animate-[slideUpFade_0.3s_ease-out]">
+            <button onclick="closeNotifications()" class="absolute top-4 right-4 w-8 h-8 bg-gray-100/50 rounded-full flex items-center justify-center text-gray-600 squish">
                 <i class="fas fa-times"></i>
             </button>
-            <h2 class="text-xl font-bold mb-4 flex items-center"><i class="fas fa-bell text-yellow-500 mr-2"></i> Reminder Hub</h2>
-            <div id="notif-content" class="space-y-3">
-                <!-- Injected via JS -->
-            </div>
+            <h2 class="text-xl font-black mb-4 flex items-center"><i class="fas fa-bell text-yellow-500 mr-2"></i> Reminder Hub</h2>
+            <div id="notif-content" class="space-y-3"></div>
         </div>
     </div>
 
-    <!-- EDIT PROFILE MODAL -->
-    <div id="edit-profile-modal" class="fixed inset-0 bg-black/50 z-[55] hidden flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
-        <div class="bg-white rounded-3xl w-full max-w-md p-6 relative shadow-2xl max-h-[90vh] overflow-y-auto">
-            <button onclick="closeEditProfile()" class="absolute top-4 right-4 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-200 transition">
+    <!-- Edit Profile Modal -->
+    <div id="edit-profile-modal" class="fixed inset-0 bg-black/60 z-[60] hidden flex items-center justify-center p-4 backdrop-blur-md transition-opacity">
+        <div class="glass-modal rounded-[2rem] w-full max-w-md p-6 relative shadow-2xl max-h-[90vh] overflow-y-auto animate-[slideUpFade_0.3s_ease-out]">
+            <button onclick="closeEditProfile()" class="absolute top-4 right-4 w-8 h-8 bg-gray-100/50 rounded-full flex items-center justify-center text-gray-600 squish">
                 <i class="fas fa-times"></i>
             </button>
-            <h2 class="text-xl font-bold mb-4">Edit Profile & Vehicle</h2>
-            <form id="edit-profile-form" class="space-y-3">
-                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider bg-gray-50 p-2 rounded">User Details</p>
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Full Name</label>
-                    <input type="text" id="edit-name" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-black">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Phone Number</label>
-                    <input type="tel" id="edit-phone" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-black">
+            <h2 class="text-2xl font-black mb-6 tracking-tight">Edit Info</h2>
+            <form id="edit-profile-form" class="space-y-4">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">User Details</p>
+                    <input type="text" id="edit-name" required placeholder="Full Name" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-2 outline-none focus:border-black text-sm">
+                    <input type="tel" id="edit-phone" required placeholder="Phone" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 outline-none focus:border-black text-sm">
                 </div>
                 
-                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider bg-gray-50 p-2 rounded mt-4">Active Vehicle Details</p>
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Bike Model</label>
-                    <input type="text" id="edit-bike-model" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-black">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Active Vehicle</p>
+                    <input type="text" id="edit-bike-model" required placeholder="Make & Model" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-2 outline-none focus:border-black text-sm">
+                    <input type="text" id="edit-bike-plate" required placeholder="Plate No" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-2 uppercase outline-none focus:border-black text-sm">
+                    <input type="number" id="edit-bike-km" required placeholder="Initial KM" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 outline-none focus:border-black text-sm">
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Plate No.</label>
-                    <input type="text" id="edit-bike-plate" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 uppercase outline-none focus:border-black">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Initial KM</label>
-                    <input type="number" id="edit-bike-km" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-black">
-                </div>
-                <button type="submit" class="w-full bg-black text-white font-bold rounded-xl py-3 mt-4 shadow-md hover:bg-gray-800">Update Info</button>
+                <button type="submit" class="squish w-full bg-black text-white font-bold rounded-2xl py-4 mt-2 shadow-xl">Update</button>
             </form>
         </div>
     </div>
 
-    <!-- ADD NEW VEHICLE MODAL -->
-    <div id="add-vehicle-modal" class="fixed inset-0 bg-black/50 z-[55] hidden flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
-        <div class="bg-white rounded-3xl w-full max-w-md p-6 relative shadow-2xl">
-            <button onclick="closeAddVehicle()" class="absolute top-4 right-4 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-200 transition">
+    <!-- Add Vehicle Modal -->
+    <div id="add-vehicle-modal" class="fixed inset-0 bg-black/60 z-[60] hidden flex items-center justify-center p-4 backdrop-blur-md transition-opacity">
+        <div class="glass-modal rounded-[2rem] w-full max-w-md p-6 relative shadow-2xl animate-[slideUpFade_0.3s_ease-out]">
+            <button onclick="closeAddVehicle()" class="absolute top-4 right-4 w-8 h-8 bg-gray-100/50 rounded-full flex items-center justify-center text-gray-600 squish">
                 <i class="fas fa-times"></i>
             </button>
-            <h2 class="text-xl font-bold mb-4">Add Another Vehicle</h2>
+            <h2 class="text-2xl font-black mb-6 tracking-tight">Add Vehicle</h2>
             <form id="add-vehicle-form" class="space-y-3">
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Bike Make & Model</label>
-                    <input type="text" id="new-v-model" placeholder="e.g. KTM Duke 390" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-black">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Plate No.</label>
-                    <input type="text" id="new-v-plate" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 uppercase outline-none focus:border-black">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Initial KM</label>
-                    <input type="number" id="new-v-km" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-black">
-                </div>
-                <button type="submit" class="w-full bg-black text-white font-bold rounded-xl py-3 mt-4 shadow-md hover:bg-gray-800">Save Vehicle</button>
+                <input type="text" id="new-v-model" placeholder="Make & Model (e.g. KTM Duke 390)" required class="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-black shadow-sm text-sm">
+                <input type="text" id="new-v-plate" placeholder="Plate No." required class="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 uppercase outline-none focus:border-black shadow-sm text-sm">
+                <input type="number" id="new-v-km" placeholder="Initial KM" required class="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-black shadow-sm text-sm">
+                <button type="submit" class="squish w-full bg-black text-white font-bold rounded-xl py-4 mt-4 shadow-xl">Save Vehicle</button>
             </form>
         </div>
     </div>
 
-    <!-- ADD/EDIT WORKSHOP MODAL -->
-    <div id="edit-workshop-modal" class="fixed inset-0 bg-black/50 z-[55] hidden flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
-        <div class="bg-white rounded-3xl w-full max-w-md p-6 relative shadow-2xl">
-            <button onclick="closeEditWorkshop()" class="absolute top-4 right-4 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-200 transition">
+    <!-- Add/Edit Workshop Modal -->
+    <div id="edit-workshop-modal" class="fixed inset-0 bg-black/60 z-[60] hidden flex items-center justify-center p-4 backdrop-blur-md transition-opacity">
+        <div class="glass-modal rounded-[2rem] w-full max-w-md p-6 relative shadow-2xl animate-[slideUpFade_0.3s_ease-out]">
+            <button onclick="closeEditWorkshop()" class="absolute top-4 right-4 w-8 h-8 bg-gray-100/50 rounded-full flex items-center justify-center text-gray-600 squish">
                 <i class="fas fa-times"></i>
             </button>
-            <h2 id="ew-modal-title" class="text-xl font-bold mb-4">Add Workshop</h2>
+            <h2 id="ew-modal-title" class="text-2xl font-black mb-6 tracking-tight">Add Workshop</h2>
             <form id="edit-workshop-form" class="space-y-3">
                 <input type="hidden" id="edit-workshop-id">
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Workshop Name</label>
-                    <input type="text" id="edit-workshop-name-input" required placeholder="e.g. Speed Auto Garage" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-black">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Phone Number</label>
-                    <input type="tel" id="edit-workshop-phone-input" required placeholder="+91..." class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-black">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Location / Address</label>
-                    <input type="text" id="edit-workshop-location-input" placeholder="e.g. Main Street, Downtown" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-black">
-                </div>
-                <button type="submit" class="w-full bg-black text-white font-bold rounded-xl py-3 mt-4 shadow-md hover:bg-gray-800">Save Workshop</button>
+                <input type="text" id="edit-workshop-name-input" required placeholder="Workshop Name" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-black shadow-sm text-sm">
+                <input type="tel" id="edit-workshop-phone-input" required placeholder="Phone Number" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-black shadow-sm text-sm">
+                <input type="text" id="edit-workshop-location-input" placeholder="Location / Address" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-black shadow-sm text-sm">
+                <button type="submit" class="squish w-full bg-black text-white font-bold rounded-xl py-4 mt-4 shadow-xl">Save Workshop</button>
             </form>
         </div>
     </div>
 
-    <!-- ADD SERVICE MODAL -->
-    <div id="add-service-modal" class="fixed inset-0 bg-black/50 z-[55] hidden flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
-        <div class="bg-white rounded-3xl w-full max-w-md p-6 relative shadow-2xl max-h-[95vh] overflow-y-auto">
-            <button onclick="closeAddService()" class="absolute top-4 right-4 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-200 transition">
+    <!-- Add Document Modal -->
+    <div id="add-document-modal" class="fixed inset-0 bg-black/60 z-[60] hidden flex items-center justify-center p-4 backdrop-blur-md transition-opacity">
+        <div class="glass-modal rounded-[2rem] w-full max-w-md p-6 relative shadow-2xl animate-[slideUpFade_0.3s_ease-out]">
+            <button onclick="closeAddDocument()" class="absolute top-4 right-4 w-8 h-8 bg-gray-100/50 rounded-full flex items-center justify-center text-gray-600 squish">
                 <i class="fas fa-times"></i>
             </button>
-            <h2 class="text-xl font-bold mb-4">Log New Service</h2>
-            <form id="add-service-form" class="space-y-3">
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Date</label>
-                        <input type="date" id="service-date" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-black">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Odometer (KM)</label>
-                        <input type="number" id="service-km" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-black">
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1 flex justify-between items-end">
-                        Work Done
-                        <span class="text-[9px] text-gray-400 font-normal normal-case">Tap labels to add</span>
-                    </label>
-                    <div class="flex flex-wrap gap-2 mb-2">
-                        <button type="button" onclick="addLabel('Oil Change')" class="px-2 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded text-[10px] font-bold hover:bg-blue-100 transition">Oil Change</button>
-                        <button type="button" onclick="addLabel('Filter Change')" class="px-2 py-1 bg-green-50 text-green-600 border border-green-200 rounded text-[10px] font-bold hover:bg-green-100 transition">Filter Change</button>
-                        <button type="button" onclick="addLabel('General Service')" class="px-2 py-1 bg-purple-50 text-purple-600 border border-purple-200 rounded text-[10px] font-bold hover:bg-purple-100 transition">General Service</button>
-                        <button type="button" onclick="addLabel('Washing')" class="px-2 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded text-[10px] font-bold hover:bg-blue-100 transition">Washing</button>
-                        <button type="button" onclick="addLabel('Chain Lube')" class="px-2 py-1 bg-orange-50 text-orange-600 border border-orange-200 rounded text-[10px] font-bold hover:bg-orange-100 transition">Chain Lube</button>
-                    </div>
-                    <input type="text" id="service-work" placeholder="e.g. Oil change, Chain lube" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-black">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Workshop Name (Optional)</label>
-                    <input type="text" id="service-workshop" placeholder="Where was it serviced?" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-black">
-                </div>
-
-                <div class="border-t border-gray-100 pt-3 mt-3">
-                    <p class="text-xs font-bold text-gray-800 mb-2 uppercase tracking-wide"><i class="fas fa-bell text-gray-400 mr-1"></i> Next Service Reminder</p>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Next Date (Opt)</label>
-                            <input type="date" id="service-next-date" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-black">
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Next KM (Opt)</label>
-                            <input type="number" id="service-next-km" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-black">
-                        </div>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1 mt-2">Upload Photo (Optional)</label>
-                    <input type="file" id="service-photo" accept="image/*" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-2 py-2 text-sm outline-none file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300 transition">
-                </div>
-
-                <button type="submit" class="w-full bg-black text-white font-bold rounded-xl py-3 mt-5 shadow-md hover:bg-gray-800 transition">Save Service Record</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- SERVICE DETAILS OVERLAY -->
-    <div id="service-details-modal" class="fixed inset-0 bg-black/60 z-[60] hidden flex items-center justify-center p-4 backdrop-blur-md transition-opacity">
-        <div class="bg-white rounded-3xl w-full max-w-sm overflow-hidden relative shadow-2xl flex flex-col max-h-[90vh]">
-            <div id="sd-image-container" class="w-full h-48 bg-gray-200 relative hidden">
-                <img id="sd-image" src="" alt="Service Photo" class="w-full h-full object-cover">
-            </div>
-            <button onclick="closeServiceDetails()" class="absolute top-4 right-4 w-8 h-8 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-black/70 transition z-10">
-                <i class="fas fa-times"></i>
-            </button>
-            
-            <div class="p-6 overflow-y-auto">
-                <div class="flex justify-between items-start border-b border-gray-100 pb-4 mb-4">
-                    <div>
-                        <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Service Date</p>
-                        <h2 id="sd-date" class="text-xl font-black text-gray-900">--</h2>
-                    </div>
-                    <div class="text-right">
-                        <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Odometer</p>
-                        <h2 id="sd-km" class="text-xl font-black text-gray-900">-- KM</h2>
-                    </div>
-                </div>
-
-                <div class="mb-4">
-                    <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-2">Work Performed</p>
-                    <div id="sd-work-tags" class="flex flex-wrap gap-2">
-                        <!-- Tags injected -->
-                    </div>
-                </div>
-
-                <div class="bg-gray-50 rounded-xl p-3 border border-gray-100 mb-4">
-                    <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1"><i class="fas fa-warehouse mr-1"></i> Workshop</p>
-                    <p id="sd-workshop" class="text-sm font-bold text-gray-800">--</p>
-                </div>
-
-                <div class="bg-blue-50 rounded-xl p-3 border border-blue-100">
-                    <p class="text-[10px] text-blue-400 font-bold uppercase tracking-widest mb-1"><i class="fas fa-clock mr-1"></i> Reminders Set</p>
-                    <p id="sd-reminder" class="text-sm font-bold text-blue-900">--</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ADD DOCUMENT MODAL -->
-    <div id="add-document-modal" class="fixed inset-0 bg-black/50 z-[55] hidden flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
-        <div class="bg-white rounded-3xl w-full max-w-md p-6 relative shadow-2xl">
-            <button onclick="closeAddDocument()" class="absolute top-4 right-4 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-200 transition">
-                <i class="fas fa-times"></i>
-            </button>
-            <h2 class="text-xl font-bold mb-4">Upload Document</h2>
+            <h2 class="text-2xl font-black mb-6 tracking-tight">Upload Vault Doc</h2>
             <form id="add-document-form" class="space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Document Title</label>
-                    <input type="text" id="doc-title" placeholder="e.g. Insurance 2024" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-black">
+                <input type="text" id="doc-title" placeholder="Document Name (e.g. Insurance)" required class="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-black shadow-sm text-sm">
+                <div class="bg-white border border-gray-200 rounded-xl p-3 shadow-sm">
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Upload Photo</label>
+                    <input type="file" id="doc-photo" accept="image/*" required class="w-full text-xs outline-none file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-black file:text-white hover:file:bg-gray-800 cursor-pointer">
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Upload Photo</label>
-                    <input type="file" id="doc-photo" accept="image/*" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-2 py-2 text-sm outline-none file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300 transition">
-                </div>
-                <button type="submit" class="w-full bg-black text-white font-bold rounded-xl py-3 mt-4 shadow-md hover:bg-gray-800 transition">Save Document</button>
+                <button type="submit" class="squish w-full bg-blue-600 text-white font-bold rounded-xl py-4 mt-4 shadow-xl">Save Document</button>
             </form>
         </div>
     </div>
 
-    <!-- VIEW DOCUMENT MODAL -->
-    <div id="view-document-modal" class="fixed inset-0 bg-black/80 z-[70] hidden flex flex-col items-center justify-center p-4 backdrop-blur-sm transition-opacity">
-        <button onclick="closeViewDocument()" class="absolute top-6 right-6 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/40 transition z-10">
-            <i class="fas fa-times text-xl"></i>
+    <!-- View Document Modal -->
+    <div id="view-document-modal" class="fixed inset-0 bg-black/90 z-[70] hidden flex flex-col items-center justify-center p-4 backdrop-blur-md transition-opacity">
+        <button onclick="closeViewDocument()" class="absolute top-8 right-6 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/20 shadow-lg squish z-20">
+            <i class="fas fa-times"></i>
         </button>
-        <h3 id="vd-title" class="text-white font-bold text-xl mb-4 tracking-wide z-10 text-center">--</h3>
-        <div class="w-full max-w-lg bg-black rounded-xl overflow-hidden shadow-2xl">
+        <h3 id="vd-title" class="text-white font-black text-2xl mb-6 tracking-tight z-10 text-center">--</h3>
+        <div class="w-full max-w-lg bg-black rounded-[2rem] overflow-hidden shadow-2xl relative border border-white/10">
             <img id="vd-image" src="" alt="Document" class="w-full h-auto max-h-[75vh] object-contain">
         </div>
     </div>
 
-    <!-- OVERLAY: CREATOR WALL -->
-    <div id="creator-wall-overlay" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[70] flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
-        <div class="bg-white rounded-3xl w-11/12 max-w-sm p-6 relative transform scale-95 transition-transform duration-300 shadow-2xl" id="creator-wall-content">
-            <button onclick="closeCreatorWall()" class="absolute top-4 right-4 w-8 h-8 bg-gray-50 rounded-full flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 transition z-10">
+    <!-- Add Service Modal -->
+    <div id="add-service-modal" class="fixed inset-0 bg-black/40 z-[60] hidden flex items-end justify-center sm:items-center p-0 sm:p-4 backdrop-blur-sm transition-opacity">
+        <div class="glass-modal rounded-t-[2rem] sm:rounded-3xl w-full max-w-md p-6 relative shadow-2xl max-h-[90vh] overflow-y-auto animate-[slideUpFade_0.3s_ease-out]">
+            <div class="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6 sm:hidden"></div>
+            <button onclick="closeAddService()" class="absolute top-6 right-6 w-8 h-8 bg-gray-100/50 rounded-full flex items-center justify-center text-gray-600 squish">
                 <i class="fas fa-times"></i>
             </button>
+            <h2 class="text-2xl font-black mb-6 tracking-tight">Log Service</h2>
             
-            <div class="text-center mb-6 mt-2 relative">
-                <div class="absolute inset-0 bg-gradient-to-r from-blue-100 to-purple-100 rounded-3xl -z-10 blur-xl opacity-50"></div>
-                <div class="w-20 h-20 bg-black text-white rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-lg border-4 border-white relative">
-                    <i class="fas fa-user-ninja"></i>
+            <form id="add-service-form" class="space-y-4">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Date</label>
+                        <input type="date" id="service-date" required class="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-black shadow-sm">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Odometer</label>
+                        <input type="number" id="service-km" placeholder="KM" required class="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-black shadow-sm">
+                    </div>
                 </div>
-                <h2 class="text-2xl font-black tracking-tight text-gray-900">BHAT BOYKA</h2>
-                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Creator & Developer</p>
+
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Total Cost (₹)</label>
+                    <div class="relative">
+                        <span class="absolute left-4 top-3.5 text-gray-400 font-bold">₹</span>
+                        <input type="number" id="service-cost" placeholder="0" class="w-full bg-white border border-gray-200 rounded-xl pl-8 pr-4 py-3 text-sm font-bold outline-none focus:border-black shadow-sm text-gray-900">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 flex justify-between items-end">
+                        Work Done <span class="text-[8px] text-gray-400 normal-case">Tap to quick-add</span>
+                    </label>
+                    <div class="flex flex-wrap gap-2 mb-2">
+                        <button type="button" onclick="addLabel('Oil Change')" class="squish px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-[10px] font-bold">Oil Change</button>
+                        <button type="button" onclick="addLabel('Filter')" class="squish px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-[10px] font-bold">Filter</button>
+                        <button type="button" onclick="addLabel('General Service')" class="squish px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-[10px] font-bold">General</button>
+                        <button type="button" onclick="addLabel('Chain Lube')" class="squish px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-[10px] font-bold">Chain Lube</button>
+                    </div>
+                    <input type="text" id="service-work" placeholder="e.g. Engine oil, Brake pads" required class="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-black shadow-sm">
+                </div>
+
+                <div class="border-t border-gray-200 pt-4 mt-2">
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2"><i class="fas fa-bell text-gray-400 mr-1"></i> Reminders (Optional)</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <input type="date" id="service-next-date" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs outline-none">
+                        <input type="number" id="service-next-km" placeholder="Next KM" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 mt-2 flex items-center gap-2"><i class="fas fa-camera"></i> Receipt / Photo</label>
+                    <input type="file" id="service-photo" accept="image/*" class="w-full bg-white border border-gray-200 rounded-xl px-2 py-2 text-xs outline-none file:mr-4 file:py-1.5 file:px-4 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-black file:text-white hover:file:bg-gray-800 cursor-pointer shadow-sm">
+                </div>
+
+                <button type="submit" class="squish w-full bg-blue-600 text-white font-bold rounded-2xl py-4 mt-6 shadow-[0_8px_20px_rgba(37,99,235,0.3)]">Save Record</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Service Details Overlay -->
+    <div id="service-details-modal" class="fixed inset-0 bg-black/80 z-[70] hidden flex items-center justify-center p-4 backdrop-blur-md transition-opacity">
+        <div class="bg-white rounded-[2rem] w-full max-w-sm overflow-hidden relative shadow-2xl flex flex-col max-h-[90vh]">
+            
+            <!-- HEADER BUTTONS -->
+            <div class="absolute top-4 right-4 flex gap-2 z-[60]">
+                <button id="sd-btn-share" onclick="shareService()" class="squish w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 shadow-sm transition-all">
+                    <i class="fas fa-share-alt"></i>
+                </button>
+                <button id="sd-btn-close" onclick="closeServiceDetails()" class="squish w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 shadow-sm transition-all">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <!-- CONDITIONAL IMAGE CONTAINER -->
+            <div id="sd-image-container" class="w-full h-56 bg-gray-100 relative hidden shrink-0 group">
+                <img id="sd-image" src="" alt="Service Photo" class="w-full h-full object-cover">
+                <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
             </div>
             
-            <div class="space-y-3">
-                <a href="https://youtube.com/@aathir_hussain_bhat.?si=28tBVXAnqc0qJfAQ" target="_blank" class="flex items-center gap-4 p-3 bg-gray-50 rounded-xl hover:bg-red-50 hover:text-red-600 transition group border border-transparent">
-                    <i class="fab fa-youtube text-xl text-gray-400 group-hover:text-red-600 w-6 text-center transition"></i>
-                    <span class="font-bold text-sm text-gray-700 group-hover:text-red-600 transition">YouTube</span>
-                </a>
-                <a href="https://share.google/05cqDTY08eQEp74MH" target="_blank" class="flex items-center gap-4 p-3 bg-gray-50 rounded-xl hover:bg-pink-50 hover:text-pink-600 transition group border border-transparent">
-                    <i class="fab fa-instagram text-xl text-gray-400 group-hover:text-pink-600 w-6 text-center transition"></i>
-                    <span class="font-bold text-sm text-gray-700 group-hover:text-pink-600 transition">Instagram</span>
-                </a>
-                <a href="https://share.google/jWLCjCdUvzcd360cx" target="_blank" class="flex items-center gap-4 p-3 bg-gray-50 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition group border border-transparent">
-                    <i class="fab fa-facebook text-xl text-gray-400 group-hover:text-blue-600 w-6 text-center transition"></i>
-                    <span class="font-bold text-sm text-gray-700 group-hover:text-blue-600 transition">Facebook</span>
-                </a>
-                <a href="https://x.com/bhatboyka" target="_blank" class="flex items-center gap-4 p-3 bg-gray-50 rounded-xl hover:bg-gray-200 transition group border border-transparent">
-                    <i class="fab fa-x-twitter text-xl text-gray-400 group-hover:text-black w-6 text-center transition"></i>
-                    <span class="font-bold text-sm text-gray-700 group-hover:text-black transition">X (Twitter)</span>
-                </a>
-                <a href="https://github.com/Aathir-Hussain-Bhat" target="_blank" class="flex items-center gap-4 p-3 bg-gray-50 rounded-xl hover:bg-gray-200 transition group border border-transparent">
-                    <i class="fab fa-github text-xl text-gray-400 group-hover:text-black w-6 text-center transition"></i>
-                    <span class="font-bold text-sm text-gray-700 group-hover:text-black transition">GitHub</span>
-                </a>
+            <!-- SCROLLABLE CONTENT AREA -->
+            <div id="sd-content-block" class="flex-1 overflow-y-auto p-6 pt-14 relative z-20 bg-white w-full">
+                <div class="flex justify-between items-end border-b border-gray-100 pb-5 mb-5">
+                    <div>
+                        <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Service Date</p>
+                        <h2 id="sd-date" class="text-2xl font-black text-gray-900 tracking-tight">--</h2>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Cost</p>
+                        <h2 id="sd-cost" class="text-2xl font-black text-blue-600 tracking-tight">--</h2>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 rounded-2xl p-4 border border-gray-100 mb-5 flex items-center justify-between">
+                    <div>
+                        <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-0.5">Odometer</p>
+                        <p id="sd-km" class="text-lg font-black text-gray-800">--</p>
+                    </div>
+                    <i class="fas fa-tachometer-alt text-gray-300 text-2xl"></i>
+                </div>
+
+                <div class="mb-6">
+                    <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-3">Work Performed</p>
+                    <div id="sd-work-tags" class="flex flex-wrap gap-2"></div>
+                </div>
+
+                <div class="bg-blue-50/50 rounded-2xl p-4 border border-blue-100 flex items-start gap-3 mb-2">
+                    <i class="fas fa-calendar-check text-blue-400 mt-0.5"></i>
+                    <div>
+                        <p class="text-[10px] text-blue-400 font-bold uppercase tracking-widest mb-0.5">Next Service Due</p>
+                        <p id="sd-reminder" class="text-sm font-bold text-blue-900">--</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Creator Wall Overlay -->
+    <div id="creator-wall-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-[2rem] w-11/12 max-w-sm p-1 relative transform scale-95 transition-transform duration-300 shadow-2xl" id="creator-wall-content">
+            <div class="bg-gray-900 rounded-[1.8rem] p-6 text-center relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-br from-blue-600/30 to-purple-600/30 blur-2xl"></div>
+                
+                <button onclick="closeCreatorWall()" class="absolute top-4 right-4 w-8 h-8 bg-white/10 rounded-full flex items-center justify-center text-white/70 hover:text-white squish z-10">
+                    <i class="fas fa-times"></i>
+                </button>
+                
+                <div class="w-24 h-24 bg-black rounded-full flex items-center justify-center mx-auto mb-4 text-4xl shadow-xl border-4 border-gray-800 relative z-10">
+                    <i class="fas fa-user-ninja text-white"></i>
+                </div>
+                <h2 class="text-3xl font-black tracking-tighter text-white relative z-10">BHAT BOYKA</h2>
+                <p class="text-[10px] text-blue-400 font-bold uppercase tracking-widest mt-1 relative z-10">Software Craftsman</p>
+                
+                <div class="grid grid-cols-2 gap-3 mt-8 relative z-10">
+                    <a href="https://youtube.com/@aathir_hussain_bhat.?si=28tBVXAnqc0qJfAQ" target="_blank" class="squish flex items-center justify-center gap-2 p-3 bg-white/10 rounded-xl hover:bg-white/20 transition border border-white/5 text-white">
+                        <i class="fab fa-youtube text-red-500"></i> <span class="text-xs font-bold">YouTube</span>
+                    </a>
+                    <a href="https://share.google/05cqDTY08eQEp74MH" target="_blank" class="squish flex items-center justify-center gap-2 p-3 bg-white/10 rounded-xl hover:bg-white/20 transition border border-white/5 text-white">
+                        <i class="fab fa-instagram text-pink-500"></i> <span class="text-xs font-bold">Instagram</span>
+                    </a>
+                    <a href="https://github.com/Aathir-Hussain-Bhat" target="_blank" class="squish flex items-center justify-center gap-2 p-3 bg-white/10 rounded-xl hover:bg-white/20 transition border border-white/5 text-white">
+                        <i class="fab fa-github"></i> <span class="text-xs font-bold">GitHub</span>
+                    </a>
+                    <a href="https://x.com/bhatboyka" target="_blank" class="squish flex items-center justify-center gap-2 p-3 bg-white/10 rounded-xl hover:bg-white/20 transition border border-white/5 text-white">
+                        <i class="fab fa-x-twitter"></i> <span class="text-xs font-bold">Twitter</span>
+                    </a>
+                </div>
             </div>
         </div>
     </div>
 
 
     <!-- ========================================== -->
-    <!-- ⚙️ CORE LOGIC & UI RENDERING -->
+    <!-- ⚙️ CORE LOGIC & "UNPARALLELED" JS          -->
     <!-- ========================================== -->
     <script>
-        // APP STATE (Multi-Vehicle Architecture)
+        // CORE STATE
         let appData = {
             user: null, 
             activeVehicleId: null,
-            vehicles: [], // {id, model, plate, initialKm, services: []}
+            vehicles: [], 
             workshops: [],
-            documents: [] // {id, title, photo}
+            documents: [] 
         };
 
-        // Get active vehicle helper
-        function getActiveVehicle() {
-            return appData.vehicles.find(v => v.id === appData.activeVehicleId) || appData.vehicles[0];
-        }
+        let currentViewedService = null; 
 
-        // ==========================================
-        // INITIALIZATION & MIGRATION
-        // ==========================================
-        function initApp() {
-            const savedData = localStorage.getItem('tmr_data');
-            if (savedData) {
-                const parsed = JSON.parse(savedData);
-                appData = parsed;
-                
-                // MIGRATION LOGIC: Convert old single-bike data to multi-vehicle array
-                if (!appData.vehicles) {
-                    appData.vehicles = [{
-                        id: 'veh_default',
-                        model: appData.bike.model,
-                        plate: appData.bike.plate,
-                        initialKm: appData.bike.initialKm,
-                        services: appData.services || []
-                    }];
-                    appData.activeVehicleId = 'veh_default';
-                    delete appData.bike;
-                    delete appData.services;
-                }
-                
-                if (!appData.workshops) {
-                    appData.workshops = [
-                        { id: 'ws_default', name: 'Aashaq Bike Point', phone: '+91 9906584655', location: 'Official Partner Workshop' }
-                    ];
-                }
-                if (!appData.documents) appData.documents = [];
-                
-                // Ensure IDs
-                appData.vehicles.forEach(v => {
-                    if(!v.id) v.id = 'veh_' + Math.random().toString(36).substr(2, 9);
-                    if(!v.services) v.services = [];
-                    v.services.forEach(s => { if(!s.id) s.id = 'svc_' + Math.random().toString(36).substr(2, 9); });
-                });
-                
-                if(!appData.activeVehicleId && appData.vehicles.length > 0) {
-                    appData.activeVehicleId = appData.vehicles[0].id;
-                }
+        // --- HAPTIC ENGINE ---
+        const haptic = (type = 'light') => {
+            if (!navigator.vibrate) return;
+            if (type === 'light') navigator.vibrate(20);
+            if (type === 'medium') navigator.vibrate(40);
+            if (type === 'heavy') navigator.vibrate([30, 50, 30]);
+            if (type === 'success') navigator.vibrate([20, 50, 20, 50, 40]);
+        };
 
-                renderUI();
-                hideSplash();
-            } else {
-                // First time user setup
-                appData.workshops = [
-                    { id: 'ws_default', name: 'Aashaq Bike Point', phone: '+91 9906584655', location: 'Official Partner Workshop' }
-                ];
-                hideSplash();
-                document.getElementById('setup-screen').classList.remove('hidden');
+        document.addEventListener('click', (e) => {
+            if(e.target.closest('button') || e.target.closest('.squish') || e.target.closest('a')) haptic('light');
+        });
+
+        // --- CELEBRATION ENGINE ---
+        const triggerConfetti = () => {
+            if(typeof confetti !== 'undefined') {
+                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, colors: ['#2563EB', '#9333EA', '#10B981'] });
             }
+        };
+
+        // --- ANIMATE NUMBERS ---
+        function animateValue(id, start, end, duration) {
+            const obj = document.getElementById(id);
+            if(!obj) return;
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                obj.innerHTML = Math.floor(progress * (end - start) + start).toLocaleString();
+                if (progress < 1) window.requestAnimationFrame(step);
+            };
+            window.requestAnimationFrame(step);
         }
 
-        document.getElementById('setup-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            appData.user = {
-                name: document.getElementById('setup-name').value,
-                phone: document.getElementById('setup-phone').value
+        function getActiveVehicle() { return appData.vehicles.find(v => v.id === appData.activeVehicleId) || appData.vehicles[0]; }
+
+        // ==========================================
+        // INITIALIZATION
+        // ==========================================
+        async function initApp() {
+            try {
+                const savedData = await localforage.getItem('tmr_data');
+                const legacyData = localStorage.getItem('tmr_data');
+
+                if (savedData) appData = savedData;
+                else if (legacyData) {
+                    appData = JSON.parse(legacyData);
+                    await localforage.setItem('tmr_data', appData);
+                    localStorage.removeItem('tmr_data');
+                }
+
+                if (appData && appData.user) {
+                    if (!appData.vehicles) {
+                        appData.vehicles = [{ id: 'veh_default', model: appData.bike.model, plate: appData.bike.plate, initialKm: appData.bike.initialKm, services: appData.services || [] }];
+                        appData.activeVehicleId = 'veh_default';
+                        delete appData.bike; delete appData.services;
+                    }
+                    if (!appData.documents) appData.documents = [];
+                    appData.vehicles.forEach(v => v.services.forEach(s => { if(s.cost === undefined) s.cost = 0; }));
+
+                    // ENFORCE OFFICIAL WORKSHOP
+                    enforceOfficialWorkshop();
+
+                    renderUI();
+                    hideSplash();
+                } else {
+                    enforceOfficialWorkshop();
+                    hideSplash();
+                    document.getElementById('setup-screen').classList.remove('hidden');
+                }
+            } catch (err) { console.error("Data error", err); }
+        }
+
+        function enforceOfficialWorkshop() {
+            if (!appData.workshops) appData.workshops = [];
+            const officialWs = {
+                id: 'ws_default',
+                name: 'Aashaq Bike Point',
+                phone: '+91 99065 84655',
+                location: 'Villagam, Kashmir',
+                about: 'The legacy garage from Villagam, redefining Kashmiri custom builds.',
+                insta: 'https://instagram.com/aashaq_bike_point_villagam',
+                yt: 'https://youtube.com/@aashaqbikepoint?si=nX97PUIWhior5aP4',
+                maps: 'https://g.co/kgs/xPvuTbW',
+                web: 'https://4k46rtf0ixtd7nlw7o6b.share.dreamflow.app/'
             };
-            
+            // Remove any old version of it to ensure fresh data
+            appData.workshops = appData.workshops.filter(w => w.id !== 'ws_default');
+            // Put it at the top
+            appData.workshops.unshift(officialWs);
+        }
+
+        async function saveData() {
+            appData.vehicles.forEach(v => v.services.sort((a, b) => new Date(b.date) - new Date(a.date)));
+            await localforage.setItem('tmr_data', appData);
+        }
+
+        document.getElementById('setup-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            appData.user = { name: document.getElementById('setup-name').value, phone: document.getElementById('setup-phone').value };
             const initV = {
                 id: 'veh_' + Math.random().toString(36).substr(2, 9),
                 model: document.getElementById('setup-bike-model').value,
@@ -659,18 +700,11 @@
             appData.vehicles = [initV];
             appData.activeVehicleId = initV.id;
             
-            saveData();
+            await saveData();
             document.getElementById('setup-screen').classList.add('hidden');
+            haptic('success'); triggerConfetti();
             renderUI();
         });
-
-        function saveData() {
-            // ALWAYS Sort services by date descending so new is on top
-            appData.vehicles.forEach(v => {
-                v.services.sort((a, b) => new Date(b.date) - new Date(a.date));
-            });
-            localStorage.setItem('tmr_data', JSON.stringify(appData));
-        }
 
         // ==========================================
         // UI RENDERING
@@ -679,15 +713,9 @@
             if(!appData.user) return;
             const activeV = getActiveVehicle();
 
-            // Setup Header & Home Dropdown
-            document.getElementById('header-greeting').textContent = `Hello, ${appData.user.name.split(' ')[0]}`;
-            
-            const selector = document.getElementById('vehicle-selector');
-            selector.innerHTML = appData.vehicles.map(v => 
-                `<option value="${v.id}" ${v.id === activeV.id ? 'selected' : ''}>${v.model}</option>`
-            ).join('');
+            document.getElementById('header-greeting').textContent = `Hi, ${appData.user.name.split(' ')[0]}`;
+            document.getElementById('vehicle-selector').innerHTML = appData.vehicles.map(v => `<option value="${v.id}" ${v.id === activeV.id ? 'selected' : ''}>${v.model}</option>`).join('');
 
-            // Dashboard
             document.getElementById('ui-bike-model').textContent = activeV.model;
             document.getElementById('ui-bike-plate').textContent = activeV.plate;
 
@@ -695,59 +723,36 @@
             let lastKm = hasServices ? activeV.services[0].km : activeV.initialKm;
             let lastDate = hasServices ? new Date(activeV.services[0].date) : new Date();
 
-            if (hasServices) {
-                document.getElementById('ui-last-date').textContent = formatDate(lastDate);
-                document.getElementById('ui-last-km').textContent = lastKm.toLocaleString() + ' KM';
-            } else {
-                document.getElementById('ui-last-date').textContent = "No Record";
-                document.getElementById('ui-last-km').textContent = activeV.initialKm.toLocaleString() + ' KM (Initial)';
-            }
+            document.getElementById('ui-last-date').textContent = hasServices ? formatDate(lastDate) : "New Garage";
+            document.getElementById('ui-last-km').textContent = lastKm.toLocaleString() + ' KM';
 
-            // Estimate Next
-            let nextKm, nextDate;
-            if (hasServices && activeV.services[0].nextDate) {
-                nextDate = new Date(activeV.services[0].nextDate);
-            } else {
-                nextDate = new Date(lastDate);
-                nextDate.setDate(nextDate.getDate() + 90);
-            }
-
-            if (hasServices && activeV.services[0].nextKm) {
-                nextKm = parseInt(activeV.services[0].nextKm);
-            } else {
-                nextKm = lastKm + 3000;
-            }
+            let nextKm = hasServices && activeV.services[0].nextKm ? parseInt(activeV.services[0].nextKm) : lastKm + 3000;
+            let nextDate = hasServices && activeV.services[0].nextDate ? new Date(activeV.services[0].nextDate) : new Date(lastDate.getTime() + 90*24*60*60*1000);
 
             document.getElementById('ui-next-date').textContent = formatDate(nextDate);
             document.getElementById('ui-next-km').textContent = nextKm.toLocaleString() + ' KM';
 
-            // Status Logic & Notifications Checker
             const status = calculateStatus(nextDate);
             const statusBanner = document.getElementById('ui-status-banner');
-            statusBanner.className = `w-full py-2.5 px-4 rounded-xl flex items-center justify-between font-bold text-sm mb-6 border ${status.classes}`;
+            statusBanner.className = `w-full py-3 px-4 rounded-xl flex items-center justify-between font-bold text-sm mb-6 bg-white/10 backdrop-blur border ${status.classes}`;
             statusBanner.innerHTML = `<span>${status.label}</span><span class="text-xs font-medium opacity-80">${status.desc}</span>`;
 
-            // Setup Bell Badge
-            if(status.label.includes('DUE') || status.label.includes('OVERDUE')) {
-                document.getElementById('notif-badge').classList.remove('hidden');
-            } else {
-                document.getElementById('notif-badge').classList.add('hidden');
-            }
+            if(status.label.includes('DUE') || status.label.includes('OVERDUE')) document.getElementById('notif-badge').classList.remove('hidden');
+            else document.getElementById('notif-badge').classList.add('hidden');
 
-            // Profile Render
             document.getElementById('prof-name').textContent = appData.user.name;
             document.getElementById('prof-phone').textContent = appData.user.phone;
             
-            const profVehList = document.getElementById('profile-vehicles-list');
-            profVehList.innerHTML = appData.vehicles.map(v => `
-                <div class="bg-gray-50 border border-gray-100 rounded-lg p-3 flex justify-between items-center ${v.id === activeV.id ? 'border-l-4 border-l-black' : ''}">
-                    <div>
-                        <p class="font-bold text-gray-800 text-sm">${v.model}</p>
-                        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-0.5">${v.plate}</p>
-                    </div>
-                    <span class="text-xs font-bold text-gray-400">${v.services.length} Records</span>
+            document.getElementById('profile-vehicles-list').innerHTML = appData.vehicles.map(v => `
+                <div class="bg-white border border-gray-100 rounded-lg p-3 flex justify-between items-center ${v.id === activeV.id ? 'border-l-4 border-l-blue-500' : ''}">
+                    <div><p class="font-bold text-gray-800 text-sm">${v.model}</p><p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-0.5">${v.plate}</p></div>
+                    <span class="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded">${v.services.length} Logs</span>
                 </div>
             `).join('');
+
+            const totalCost = activeV.services.reduce((sum, svc) => sum + (Number(svc.cost) || 0), 0);
+            animateValue("ui-total-cost", 0, totalCost, 1000);
+            document.getElementById('ui-total-services').textContent = activeV.services.length;
 
             renderTimeline(activeV);
             renderHomeRecent(activeV);
@@ -755,135 +760,129 @@
             renderDocuments();
         }
 
-        function switchActiveVehicle(vid) {
-            appData.activeVehicleId = vid;
-            saveData();
-            renderUI();
-        }
+        async function switchActiveVehicle(vid) { appData.activeVehicleId = vid; await saveData(); renderUI(); }
 
         function renderHomeRecent(activeV) {
             const container = document.getElementById('home-recent-services');
-            container.innerHTML = '';
-            
             if (activeV.services.length === 0) {
-                container.innerHTML = `<p class="text-xs text-gray-400 italic text-center py-4 border border-dashed border-gray-200 rounded-xl">No services logged yet.</p>`;
+                container.innerHTML = `<div class="bg-white border border-gray-100 rounded-2xl p-5 text-center shadow-sm"><i class="fas fa-motorcycle text-gray-300 text-2xl mb-2"></i><p class="text-xs text-gray-400 font-medium">Ready for your first ride.</p></div>`;
                 return;
             }
-
-            const sorted = [...activeV.services].sort((a,b) => new Date(b.date) - new Date(a.date));
-
-            sorted.slice(0, 2).forEach(service => {
-                const works = service.work.slice(0, 2).map(w => w.trim()).join(', ') + (service.work.length > 2 ? '...' : '');
-                container.innerHTML += `
-                    <div onclick="openServiceDetails('${service.id}')" class="bg-white border border-gray-200 rounded-xl p-3 flex justify-between items-center shadow-sm cursor-pointer hover:border-gray-300 transition">
-                        <div>
-                            <p class="font-bold text-sm text-gray-900">${formatDate(service.date)}</p>
-                            <p class="text-xs text-gray-500 mt-0.5">${works}</p>
-                        </div>
-                        <div class="text-right">
-                            <p class="font-bold text-sm text-gray-900">${service.km.toLocaleString()} KM</p>
-                            <p class="text-[10px] text-gray-400 uppercase font-bold tracking-widest mt-0.5 hover:text-black">View <i class="fas fa-chevron-right ml-1"></i></p>
-                        </div>
-                    </div>
-                `;
-            });
+            // Displayed more items so scrolling feels natural on the home screen
+            container.innerHTML = activeV.services.slice(0, 4).map(svc => {
+                const works = svc.work.slice(0, 2).map(w => w.trim()).join(', ') + (svc.work.length > 2 ? '...' : '');
+                const costBadge = svc.cost ? `<span class="bg-green-50 text-green-600 px-2 py-1 rounded text-[10px] font-bold">₹${Number(svc.cost).toLocaleString()}</span>` : '';
+                return `
+                <div onclick="openServiceDetails('${svc.id}')" class="squish bg-white border border-gray-100 rounded-2xl p-4 flex justify-between items-center shadow-sm cursor-pointer mb-3">
+                    <div><p class="font-bold text-sm text-gray-900">${formatDate(svc.date)}</p><p class="text-xs text-gray-500 mt-1">${works}</p></div>
+                    <div class="text-right flex flex-col items-end gap-1"><p class="font-black text-sm text-gray-800">${svc.km.toLocaleString()} KM</p>${costBadge}</div>
+                </div>`;
+            }).join('');
         }
 
         function renderTimeline(activeV) {
             const timeline = document.getElementById('ui-timeline');
-            const emptyState = document.getElementById('empty-state');
-            
-            timeline.innerHTML = '';
-            
-            if (activeV.services.length === 0) {
-                timeline.classList.add('hidden');
-                emptyState.classList.remove('hidden');
-                return;
-            }
-            
-            timeline.classList.remove('hidden');
-            emptyState.classList.add('hidden');
+            if (activeV.services.length === 0) { timeline.classList.add('hidden'); document.getElementById('empty-state').classList.remove('hidden'); return; }
+            timeline.classList.remove('hidden'); document.getElementById('empty-state').classList.add('hidden');
 
-            const sorted = [...activeV.services].sort((a,b) => new Date(b.date) - new Date(a.date));
-
-            sorted.forEach((service, index) => {
-                const workTags = service.work.map(w => 
-                    `<span class="bg-gray-100 text-gray-600 text-[10px] px-2 py-1 rounded-md font-semibold border border-gray-200 whitespace-nowrap">${w.trim()}</span>`
-                ).join('');
-
-                const isLatest = index === 0;
-                const dotColor = isLatest ? 'bg-black border-white w-4 h-4 -left-[9px]' : 'bg-gray-300 border-white w-3 h-3 -left-[7px]';
-
-                timeline.innerHTML += `
-                    <div class="relative pl-6 cursor-pointer" onclick="openServiceDetails('${service.id}')">
-                        <div class="absolute ${dotColor} rounded-full top-1.5 border-2 shadow-sm z-10"></div>
-                        <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 hover:border-gray-300 transition">
-                            <div class="flex justify-between items-end mb-3 border-b border-gray-50 pb-2">
-                                <div>
-                                    <p class="text-xs text-gray-400 font-bold uppercase tracking-wider mb-0.5">Date</p>
-                                    <p class="font-bold text-gray-800 text-sm">${formatDate(service.date)}</p>
-                                </div>
-                                <div class="text-right">
-                                    <p class="text-xs text-gray-400 font-bold uppercase tracking-wider mb-0.5">Odometer</p>
-                                    <p class="font-bold text-gray-800 text-sm">${service.km.toLocaleString()} KM</p>
-                                </div>
-                            </div>
-                            <div class="pt-1">
-                                <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-2">Work Performed</p>
-                                <div class="flex flex-wrap gap-1.5">
-                                    ${workTags}
-                                </div>
-                            </div>
+            timeline.innerHTML = activeV.services.map((svc, idx) => {
+                const tags = svc.work.map(w => `<span class="bg-gray-100 text-gray-600 text-[10px] px-2 py-1 rounded-md font-bold">${w.trim()}</span>`).join('');
+                const dot = idx === 0 ? 'bg-blue-600 border-white w-4 h-4 -left-[9px]' : 'bg-gray-300 border-white w-3 h-3 -left-[7px]';
+                const costStr = svc.cost && svc.cost > 0 ? `<p class="text-sm font-black text-blue-600">₹${Number(svc.cost).toLocaleString()}</p>` : '';
+                
+                return `
+                <div class="relative pl-6 squish cursor-pointer" onclick="openServiceDetails('${svc.id}')">
+                    <div class="absolute ${dot} rounded-full top-2 border-2 shadow-sm z-10"></div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                        <div class="flex justify-between items-start mb-3 border-b border-gray-50 pb-3">
+                            <div><p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Date</p><p class="font-black text-gray-900 text-sm">${formatDate(svc.date)}</p></div>
+                            <div class="text-right"><p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Odo & Cost</p><p class="font-black text-gray-800 text-sm">${svc.km.toLocaleString()} KM</p>${costStr}</div>
                         </div>
+                        <div class="flex flex-wrap gap-1.5">${tags}</div>
                     </div>
-                `;
-            });
+                </div>`;
+            }).join('');
         }
 
         function renderWorkshops() {
             const container = document.getElementById('workshops-list');
-            container.innerHTML = appData.workshops.map(ws => `
-                <div class="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="flex items-center gap-4">
-                            <div class="w-12 h-12 bg-gray-100 text-black rounded-full flex justify-center items-center text-xl shadow-inner shrink-0">
-                                <i class="fas fa-warehouse"></i>
+            container.innerHTML = appData.workshops.map(ws => {
+                if(ws.id === 'ws_default') {
+                    // OFFICIAL WORKSHOP PREMIUM CARD
+                    return `
+                    <div class="bg-gradient-to-br from-gray-900 to-black text-white rounded-[2rem] p-6 shadow-2xl mb-6 relative overflow-hidden">
+                        <div class="absolute -right-10 -top-10 w-40 h-40 bg-blue-500 rounded-full blur-3xl opacity-20"></div>
+                        <div class="flex justify-between items-start mb-4 relative z-10">
+                            <div>
+                                <span class="bg-yellow-500/20 text-yellow-400 text-[9px] font-bold px-2 py-1 rounded uppercase tracking-widest border border-yellow-500/30">Official Partner</span>
+                                <h4 class="font-black text-2xl tracking-tight mt-2">${ws.name}</h4>
+                                <p class="text-xs text-gray-400 mt-1"><i class="fas fa-map-marker-alt text-gray-500 mr-1"></i> ${ws.location}</p>
                             </div>
-                            <div class="overflow-hidden">
-                                <h4 class="font-bold text-gray-900 text-lg truncate">${ws.name}</h4>
-                                <p class="text-xs text-gray-500 truncate">${ws.location}</p>
+                            <div class="w-12 h-12 bg-white/10 backdrop-blur rounded-full flex items-center justify-center border border-white/20 shadow-lg">
+                                <i class="fas fa-tools text-white"></i>
                             </div>
                         </div>
-                        ${ws.id !== 'ws_default' ? `
-                            <div class="flex gap-2 shrink-0">
-                                <button onclick="openEditWorkshop('${ws.id}')" class="w-7 h-7 bg-gray-50 rounded-full flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition"><i class="fas fa-pen text-xs"></i></button>
-                                <button onclick="deleteWorkshop('${ws.id}')" class="w-7 h-7 bg-gray-50 rounded-full flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 transition"><i class="fas fa-trash text-xs"></i></button>
+                        <p class="text-sm text-gray-300 font-medium italic mb-5 relative z-10 border-l-2 border-blue-500 pl-3">"${ws.about}"</p>
+                        
+                        <div class="grid grid-cols-4 gap-2 mb-6 relative z-10">
+                            <a href="${ws.insta}" target="_blank" class="squish flex flex-col items-center justify-center gap-1.5 bg-white/10 py-3 rounded-xl hover:bg-white/20 transition">
+                                <i class="fab fa-instagram text-pink-400 text-xl"></i><span class="text-[8px] uppercase tracking-widest font-bold">Insta</span>
+                            </a>
+                            <a href="${ws.yt}" target="_blank" class="squish flex flex-col items-center justify-center gap-1.5 bg-white/10 py-3 rounded-xl hover:bg-white/20 transition">
+                                <i class="fab fa-youtube text-red-500 text-xl"></i><span class="text-[8px] uppercase tracking-widest font-bold">YouTube</span>
+                            </a>
+                            <a href="${ws.maps}" target="_blank" class="squish flex flex-col items-center justify-center gap-1.5 bg-white/10 py-3 rounded-xl hover:bg-white/20 transition">
+                                <i class="fas fa-map-marked-alt text-green-400 text-xl"></i><span class="text-[8px] uppercase tracking-widest font-bold">Maps</span>
+                            </a>
+                            <a href="${ws.web}" target="_blank" class="squish flex flex-col items-center justify-center gap-1.5 bg-white/10 py-3 rounded-xl hover:bg-white/20 transition">
+                                <i class="fas fa-globe text-blue-400 text-xl"></i><span class="text-[8px] uppercase tracking-widest font-bold">Web</span>
+                            </a>
+                        </div>
+                        
+                        <button onclick="bookWorkshop('${ws.phone}')" class="squish w-full bg-white text-black font-black py-4 rounded-2xl shadow-xl flex justify-center items-center gap-2 relative z-10 hover:bg-gray-100 transition">
+                            <i class="fab fa-whatsapp text-[#25D366] text-xl"></i> Book via WhatsApp
+                        </button>
+                    </div>`;
+                } else {
+                    // NEW UPGRADED STANDARD WORKSHOP CARD
+                    return `
+                    <div class="bg-white border border-gray-100 rounded-[2rem] p-5 shadow-sm relative overflow-hidden group mb-4">
+                        <div class="absolute -right-6 -top-6 w-24 h-24 bg-gray-50 rounded-full z-0 transition-transform duration-500"></div>
+                        <div class="relative z-10 flex justify-between items-start mb-5">
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl flex items-center justify-center text-gray-500 border border-gray-200 shadow-sm shrink-0">
+                                    <i class="fas fa-wrench text-xl"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-black text-gray-900 text-lg leading-tight mb-1">${ws.name}</h4>
+                                    <p class="text-[11px] text-gray-500 font-medium flex items-center gap-1.5"><i class="fas fa-map-marker-alt text-gray-400"></i> ${ws.location}</p>
+                                </div>
                             </div>
-                        ` : `<span class="bg-blue-50 text-blue-600 text-[9px] font-bold px-2 py-1 rounded uppercase tracking-wider border border-blue-100 shrink-0">Official</span>`}
-                    </div>
-                    <div class="space-y-2 mb-4">
-                        <p class="text-sm text-gray-600 font-medium"><i class="fas fa-phone w-5 text-center text-gray-400"></i> ${ws.phone}</p>
-                    </div>
-                    <button onclick="bookWorkshop('${ws.phone}')" class="w-full bg-[#25D366] text-white font-bold py-3 rounded-xl shadow-md hover:bg-[#1ebe57] transition flex justify-center items-center gap-2">
-                        <i class="fab fa-whatsapp text-lg"></i> Book via WhatsApp
-                    </button>
-                </div>
-            `).join('');
+                            <div class="flex flex-col gap-2 shrink-0 ml-2">
+                                <button onclick="openEditWorkshop('${ws.id}')" class="w-8 h-8 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-xs squish shadow-sm border border-blue-100"><i class="fas fa-pen"></i></button>
+                                <button onclick="deleteWorkshop('${ws.id}')" class="w-8 h-8 bg-red-50 text-red-600 rounded-full flex items-center justify-center text-xs squish shadow-sm border border-red-100"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </div>
+                        <button onclick="bookWorkshop('${ws.phone}')" class="squish relative z-10 w-full bg-gray-900 text-white font-bold py-3.5 rounded-xl flex justify-center items-center gap-2 shadow-md hover:bg-black transition-colors">
+                            <i class="fas fa-phone-alt text-sm"></i> Call ${ws.phone}
+                        </button>
+                    </div>`;
+                }
+            }).join('');
         }
 
         function renderDocuments() {
             const container = document.getElementById('documents-list');
             if (appData.documents.length === 0) {
-                container.innerHTML = `<div class="col-span-2 text-center py-8"><i class="fas fa-file-alt text-4xl text-gray-200 mb-3"></i><p class="text-sm text-gray-500">No documents saved.</p></div>`;
+                container.innerHTML = `<div class="col-span-2 text-center py-10"><div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3"><i class="fas fa-folder-open text-2xl text-gray-300"></i></div><p class="text-sm font-bold text-gray-400">Vault is Empty.</p></div>`;
                 return;
             }
-
             container.innerHTML = appData.documents.map(doc => `
-                <div onclick="openViewDocument('${doc.id}')" class="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm cursor-pointer hover:border-gray-400 transition group">
-                    <div class="h-28 bg-gray-100 relative overflow-hidden">
-                        <img src="${doc.photo}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                <div onclick="openViewDocument('${doc.id}')" class="squish bg-white border border-gray-100 rounded-[1.5rem] overflow-hidden shadow-sm cursor-pointer p-2">
+                    <div class="h-32 bg-gray-100 rounded-xl relative overflow-hidden">
+                        <img src="${doc.photo}" class="w-full h-full object-cover">
                     </div>
-                    <div class="p-3">
+                    <div class="p-3 text-center">
                         <p class="font-bold text-sm text-gray-800 truncate">${doc.title}</p>
                     </div>
                 </div>
@@ -891,98 +890,121 @@
         }
 
         // ==========================================
-        // MODALS & ACTIONS
+        // MODALS, LOGIC & NATIVE SHARE
         // ==========================================
+        function addLabel(label) {
+            const input = document.getElementById('service-work');
+            let current = input.value.trim();
+            if(current.length > 0 && !current.endsWith(',')) current += ', ';
+            input.value = current + label;
+        }
 
-        // Notifications (Enhanced Progress Bar)
-        function openNotifications() {
+        function openAddService() { document.getElementById('add-service-form').reset(); document.getElementById('service-date').valueAsDate = new Date(); document.getElementById('add-service-modal').classList.remove('hidden'); }
+        function closeAddService() { document.getElementById('add-service-modal').classList.add('hidden'); }
+
+        document.getElementById('add-service-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
             const activeV = getActiveVehicle();
-            const hasServices = activeV.services.length > 0;
+            const workString = document.getElementById('service-work').value;
+            const workArray = workString.split(',').map(item => item.trim()).filter(item => item.length > 0);
+            const fileInput = document.getElementById('service-photo');
             
-            let lastDate = hasServices ? new Date(activeV.services[0].date) : new Date(); // assume today if no record
-            let lastKm = hasServices ? activeV.services[0].km : activeV.initialKm;
-            
-            let nextDate = (hasServices && activeV.services[0].nextDate) ? new Date(activeV.services[0].nextDate) : new Date(lastDate.getTime() + (90 * 24 * 60 * 60 * 1000));
-            let nextKm = (hasServices && activeV.services[0].nextKm) ? parseInt(activeV.services[0].nextKm) : (lastKm + 3000);
+            const saveServiceData = async (photoBase64) => {
+                const newService = {
+                    id: 'svc_' + Math.random().toString(36).substr(2, 9),
+                    date: document.getElementById('service-date').value,
+                    km: parseInt(document.getElementById('service-km').value),
+                    cost: document.getElementById('service-cost').value ? parseFloat(document.getElementById('service-cost').value) : 0,
+                    work: workArray,
+                    nextDate: document.getElementById('service-next-date').value || null,
+                    nextKm: document.getElementById('service-next-km').value ? parseInt(document.getElementById('service-next-km').value) : null,
+                    photo: photoBase64
+                };
+                
+                activeV.services.push(newService);
+                activeV.services.sort((a, b) => new Date(b.date) - new Date(a.date));
+                await saveData(); 
+                renderUI(); 
+                closeAddService(); 
+                haptic('success'); 
+                triggerConfetti();
+            };
 
-            const status = calculateStatus(nextDate);
-            const content = document.getElementById('notif-content');
-            
-            // Calculate Progress Percentage
-            const today = Date.now();
-            const totalDuration = nextDate.getTime() - lastDate.getTime();
-            const elapsed = today - lastDate.getTime();
-            
-            let percent = totalDuration > 0 ? (elapsed / totalDuration) * 100 : 0;
-            percent = Math.max(0, Math.min(100, percent)); // Clamp between 0 and 100
-            
-            let barColor = 'bg-green-500';
-            if(percent > 75) barColor = 'bg-yellow-500';
-            if(percent >= 100) barColor = 'bg-red-500';
-
-            // Top Status Message
-            let topMsg = '';
-            if(status.label.includes('DUE') || status.label.includes('OVERDUE')) {
-                topMsg = `
-                    <div class="bg-red-50 border border-red-100 rounded-xl p-4">
-                        <div class="flex items-center gap-3 mb-2">
-                            <i class="fas fa-exclamation-circle text-red-500 text-xl"></i>
-                            <h4 class="font-bold text-red-800 text-sm">Action Required</h4>
-                        </div>
-                        <p class="text-xs text-red-600 font-medium">Your <strong>${activeV.model}</strong> is scheduled for maintenance.</p>
-                    </div>
-                `;
+            if(fileInput.files && fileInput.files[0]) {
+                compressImage(fileInput.files[0], (base64) => saveServiceData(base64));
             } else {
-                topMsg = `
-                    <div class="bg-green-50 border border-green-100 rounded-xl p-4 flex items-center gap-3">
-                        <i class="fas fa-check-circle text-green-500 text-2xl"></i>
-                        <div>
-                            <h4 class="font-bold text-green-800 text-sm">All Good!</h4>
-                            <p class="text-xs text-green-600 mt-0.5">No pending services for ${activeV.model}.</p>
-                        </div>
-                    </div>
-                `;
+                saveServiceData(null);
+            }
+        });
+
+        function openServiceDetails(id) {
+            const activeV = getActiveVehicle();
+            const svc = activeV.services.find(s => s.id === id);
+            if(!svc) return;
+            currentViewedService = { ...svc, bikeModel: activeV.model };
+
+            document.getElementById('sd-date').textContent = formatDate(svc.date);
+            document.getElementById('sd-km').textContent = svc.km.toLocaleString() + ' KM';
+            document.getElementById('sd-cost').textContent = svc.cost ? `₹${Number(svc.cost).toLocaleString()}` : '--';
+            document.getElementById('sd-work-tags').innerHTML = svc.work.map(w => `<span class="bg-blue-50 text-blue-700 text-[10px] px-3 py-1.5 rounded-lg font-bold">${w.trim()}</span>`).join('');
+
+            let reminderTxt = [];
+            if(svc.nextDate) reminderTxt.push(formatDate(svc.nextDate));
+            if(svc.nextKm) reminderTxt.push(parseInt(svc.nextKm).toLocaleString() + ' KM');
+            document.getElementById('sd-reminder').textContent = reminderTxt.length > 0 ? reminderTxt.join(' or ') : 'Standard Estimate';
+
+            const imgContainer = document.getElementById('sd-image-container');
+            const img = document.getElementById('sd-image');
+            const contentBlock = document.getElementById('sd-content-block');
+            const btnShare = document.getElementById('sd-btn-share');
+            const btnClose = document.getElementById('sd-btn-close');
+
+            // Dynamic logic to handle image presence perfectly
+            if(svc.photo) { 
+                img.src = svc.photo; 
+                imgContainer.classList.remove('hidden'); 
+                
+                // Content Block Overlap styling
+                contentBlock.classList.add('-mt-6', 'rounded-t-[2rem]');
+                contentBlock.classList.remove('pt-14');
+                
+                // Buttons transparent/white for image background
+                btnShare.className = "squish w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/20 shadow-lg transition-all";
+                btnClose.className = "squish w-10 h-10 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/20 shadow-lg transition-all";
+            } else { 
+                imgContainer.classList.add('hidden'); 
+                img.src = ''; 
+                
+                // Remove Overlap, add top padding so text clears the buttons
+                contentBlock.classList.remove('-mt-6', 'rounded-t-[2rem]');
+                contentBlock.classList.add('pt-14');
+                
+                // Buttons gray for white background
+                btnShare.className = "squish w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 shadow-sm transition-all";
+                btnClose.className = "squish w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 shadow-sm transition-all";
             }
 
-            // Assemble Full Overlay
-            content.innerHTML = `
-                ${topMsg}
-                <div class="mt-4 bg-gray-50 border border-gray-100 rounded-xl p-4 shadow-sm">
-                    <h5 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center justify-between">
-                        <span>Service Timeline</span>
-                        <i class="fas fa-clock text-gray-300"></i>
-                    </h5>
-                    
-                    <div class="flex justify-between text-xs font-bold text-gray-800 mb-1">
-                        <span>Last: ${formatDate(lastDate)}</span>
-                        <span>Next: ${formatDate(nextDate)}</span>
-                    </div>
-                    <div class="flex justify-between text-[10px] text-gray-500 mb-3 font-medium">
-                        <span>${lastKm.toLocaleString()} KM</span>
-                        <span>${nextKm.toLocaleString()} KM</span>
-                    </div>
-                    
-                    <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden shadow-inner">
-                        <div class="${barColor} h-full rounded-full transition-all duration-1000 ease-out" style="width: 0%" id="notif-progress-bar"></div>
-                    </div>
-                    <p class="text-center text-[10px] text-gray-400 mt-2 font-bold">${Math.round(percent)}% to next scheduled service</p>
-                </div>
-            `;
-
-            document.getElementById('notif-modal').classList.remove('hidden');
-            
-            // Animate bar slightly after render
-            setTimeout(() => {
-                const bar = document.getElementById('notif-progress-bar');
-                if(bar) bar.style.width = `${percent}%`;
-            }, 50);
+            document.getElementById('service-details-modal').classList.remove('hidden');
         }
 
-        function closeNotifications() {
-            document.getElementById('notif-modal').classList.add('hidden');
+        function closeServiceDetails() { document.getElementById('service-details-modal').classList.add('hidden'); currentViewedService = null; }
+
+        async function shareService() {
+            if(!currentViewedService) return;
+            const text = `🏍️ *Service Record: ${currentViewedService.bikeModel}*\n📅 Date: ${formatDate(currentViewedService.date)}\n🛣️ Odometer: ${currentViewedService.km.toLocaleString()} KM\n💰 Cost: ₹${currentViewedService.cost || 0}\n🔧 Work: ${currentViewedService.work.join(', ')}\n\nShared via Track My Ride Pro`;
+            try {
+                if (navigator.share) {
+                    await navigator.share({ title: `${currentViewedService.bikeModel} Service Record`, text: text });
+                    haptic('success');
+                } else {
+                    await navigator.clipboard.writeText(text);
+                    alert("Service details copied to clipboard!");
+                    haptic('light');
+                }
+            } catch (error) { console.log('Error sharing:', error); }
         }
 
-        // Edit Profile
+        // FORMS & ACTIONS
         function openEditProfile() {
             const activeV = getActiveVehicle();
             document.getElementById('edit-name').value = appData.user.name;
@@ -992,35 +1014,21 @@
             document.getElementById('edit-bike-km').value = activeV.initialKm;
             document.getElementById('edit-profile-modal').classList.remove('hidden');
         }
-
-        function closeEditProfile() {
-            document.getElementById('edit-profile-modal').classList.add('hidden');
-        }
-
-        document.getElementById('edit-profile-form').addEventListener('submit', function(e) {
+        function closeEditProfile() { document.getElementById('edit-profile-modal').classList.add('hidden'); }
+        document.getElementById('edit-profile-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             appData.user.name = document.getElementById('edit-name').value;
             appData.user.phone = document.getElementById('edit-phone').value;
-            
             const activeV = getActiveVehicle();
             activeV.model = document.getElementById('edit-bike-model').value;
             activeV.plate = document.getElementById('edit-bike-plate').value.toUpperCase();
             activeV.initialKm = parseInt(document.getElementById('edit-bike-km').value);
-            
-            saveData();
-            renderUI();
-            closeEditProfile();
+            await saveData(); renderUI(); closeEditProfile(); haptic('success');
         });
 
-        // Add Vehicle
-        function openAddVehicle() {
-            document.getElementById('add-vehicle-form').reset();
-            document.getElementById('add-vehicle-modal').classList.remove('hidden');
-        }
-        function closeAddVehicle() {
-            document.getElementById('add-vehicle-modal').classList.add('hidden');
-        }
-        document.getElementById('add-vehicle-form').addEventListener('submit', function(e) {
+        function openAddVehicle() { document.getElementById('add-vehicle-form').reset(); document.getElementById('add-vehicle-modal').classList.remove('hidden'); }
+        function closeAddVehicle() { document.getElementById('add-vehicle-modal').classList.add('hidden'); }
+        document.getElementById('add-vehicle-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const newV = {
                 id: 'veh_' + Math.random().toString(36).substr(2, 9),
@@ -1029,24 +1037,14 @@
                 initialKm: parseInt(document.getElementById('new-v-km').value),
                 services: []
             };
-            appData.vehicles.push(newV);
-            appData.activeVehicleId = newV.id; // Auto switch
-            saveData();
-            renderUI();
-            closeAddVehicle();
-            switchTab('home');
+            appData.vehicles.push(newV); appData.activeVehicleId = newV.id;
+            await saveData(); renderUI(); closeAddVehicle(); switchTab('home'); haptic('success'); triggerConfetti();
         });
 
-        // Workshops Manage
-        function openAddWorkshop() {
-            document.getElementById('edit-workshop-form').reset();
-            document.getElementById('edit-workshop-id').value = '';
-            document.getElementById('ew-modal-title').textContent = "Add Workshop";
-            document.getElementById('edit-workshop-modal').classList.remove('hidden');
-        }
+        function openAddWorkshop() { document.getElementById('edit-workshop-form').reset(); document.getElementById('edit-workshop-id').value = ''; document.getElementById('ew-modal-title').textContent = "Add Workshop"; document.getElementById('edit-workshop-modal').classList.remove('hidden'); }
         function openEditWorkshop(id) {
             const ws = appData.workshops.find(w => w.id === id);
-            if(!ws) return;
+            if(!ws || ws.id === 'ws_default') return; // Cannot edit official
             document.getElementById('edit-workshop-id').value = id;
             document.getElementById('edit-workshop-name-input').value = ws.name;
             document.getElementById('edit-workshop-phone-input').value = ws.phone;
@@ -1054,162 +1052,90 @@
             document.getElementById('ew-modal-title').textContent = "Edit Workshop";
             document.getElementById('edit-workshop-modal').classList.remove('hidden');
         }
-        function closeEditWorkshop() {
-            document.getElementById('edit-workshop-modal').classList.add('hidden');
-        }
-        function deleteWorkshop(id) {
-            if(confirm("Are you sure you want to remove this workshop?")) {
+        function closeEditWorkshop() { document.getElementById('edit-workshop-modal').classList.add('hidden'); }
+        async function deleteWorkshop(id) {
+            if(id === 'ws_default') return; // Cannot delete official
+            haptic('medium');
+            if(confirm("Remove this workshop?")) {
                 appData.workshops = appData.workshops.filter(ws => ws.id !== id);
-                saveData();
-                renderUI();
+                await saveData(); renderUI();
             }
         }
-        document.getElementById('edit-workshop-form').addEventListener('submit', function(e) {
+        document.getElementById('edit-workshop-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const id = document.getElementById('edit-workshop-id').value;
             const name = document.getElementById('edit-workshop-name-input').value;
             const phone = document.getElementById('edit-workshop-phone-input').value;
             const location = document.getElementById('edit-workshop-location-input').value;
-            
-            if(id) {
-                // Update
-                const ws = appData.workshops.find(w => w.id === id);
-                if(ws) { ws.name = name; ws.phone = phone; ws.location = location; }
-            } else {
-                // Create
-                appData.workshops.push({
-                    id: 'ws_' + Math.random().toString(36).substr(2, 9),
-                    name, phone, location
-                });
-            }
-            saveData();
-            renderUI();
-            closeEditWorkshop();
+            if(id) { const ws = appData.workshops.find(w => w.id === id); if(ws) { ws.name = name; ws.phone = phone; ws.location = location; } } 
+            else { appData.workshops.push({ id: 'ws_' + Math.random().toString(36).substr(2, 9), name, phone, location }); }
+            await saveData(); renderUI(); closeEditWorkshop(); haptic('success');
         });
 
-        // Add Service
-        function addLabel(label) {
-            const input = document.getElementById('service-work');
-            let current = input.value.trim();
-            if(current.length > 0 && !current.endsWith(',')) current += ', ';
-            input.value = current + label;
-        }
-
-        function openAddService() {
-            document.getElementById('add-service-form').reset();
-            document.getElementById('service-date').valueAsDate = new Date();
-            document.getElementById('add-service-modal').classList.remove('hidden');
-        }
-
-        function closeAddService() {
-            document.getElementById('add-service-modal').classList.add('hidden');
-        }
-
-        document.getElementById('add-service-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const fileInput = document.getElementById('service-photo');
-            
-            const saveRecord = (photoBase64 = null) => {
-                const activeV = getActiveVehicle();
-                activeV.services.push({
-                    id: 'svc_' + Math.random().toString(36).substr(2, 9),
-                    date: document.getElementById('service-date').value,
-                    km: parseInt(document.getElementById('service-km').value),
-                    work: document.getElementById('service-work').value.split(',').filter(i => i.trim() !== ""),
-                    workshop: document.getElementById('service-workshop').value || 'Unknown',
-                    nextDate: document.getElementById('service-next-date').value || null,
-                    nextKm: document.getElementById('service-next-km').value || null,
-                    photo: photoBase64
-                });
-                
-                saveData();
-                renderUI();
-                closeAddService();
-                switchTab('services');
-            };
-
-            if(fileInput.files && fileInput.files[0]) {
-                compressImage(fileInput.files[0], saveRecord);
-            } else {
-                saveRecord();
-            }
-        });
-
-        // Documents
-        function openAddDocument() {
-            document.getElementById('add-document-form').reset();
-            document.getElementById('add-document-modal').classList.remove('hidden');
-        }
-        function closeAddDocument() {
-            document.getElementById('add-document-modal').classList.add('hidden');
-        }
-
+        function openAddDocument() { document.getElementById('add-document-form').reset(); document.getElementById('add-document-modal').classList.remove('hidden'); }
+        function closeAddDocument() { document.getElementById('add-document-modal').classList.add('hidden'); }
         document.getElementById('add-document-form').addEventListener('submit', function(e) {
             e.preventDefault();
             const fileInput = document.getElementById('doc-photo');
             if(fileInput.files && fileInput.files[0]) {
-                compressImage(fileInput.files[0], (base64) => {
-                    appData.documents.push({
-                        id: 'doc_' + Math.random().toString(36).substr(2, 9),
-                        title: document.getElementById('doc-title').value,
-                        photo: base64
-                    });
-                    saveData();
-                    renderUI();
-                    closeAddDocument();
+                compressImage(fileInput.files[0], async (base64) => {
+                    appData.documents.push({ id: 'doc_' + Math.random().toString(36).substr(2, 9), title: document.getElementById('doc-title').value, photo: base64 });
+                    await saveData(); renderUI(); closeAddDocument(); haptic('success'); triggerConfetti();
                 });
             }
         });
-
         function openViewDocument(id) {
             const doc = appData.documents.find(d => d.id === id);
-            if(doc) {
-                document.getElementById('vd-title').textContent = doc.title;
-                document.getElementById('vd-image').src = doc.photo;
-                document.getElementById('view-document-modal').classList.remove('hidden');
-            }
+            if(doc) { document.getElementById('vd-title').textContent = doc.title; document.getElementById('vd-image').src = doc.photo; document.getElementById('view-document-modal').classList.remove('hidden'); }
         }
-        function closeViewDocument() {
-            document.getElementById('view-document-modal').classList.add('hidden');
-        }
+        function closeViewDocument() { document.getElementById('view-document-modal').classList.add('hidden'); }
 
-        // Service Details
-        function openServiceDetails(id) {
+        // NOTIFICATIONS
+        function openNotifications() {
             const activeV = getActiveVehicle();
-            const svc = activeV.services.find(s => s.id === id);
-            if(!svc) return;
+            const hasServices = activeV.services.length > 0;
+            let lastDate = hasServices ? new Date(activeV.services[0].date) : new Date(); 
+            let lastKm = hasServices ? activeV.services[0].km : activeV.initialKm;
+            let nextDate = (hasServices && activeV.services[0].nextDate) ? new Date(activeV.services[0].nextDate) : new Date(lastDate.getTime() + (90 * 24 * 60 * 60 * 1000));
+            let nextKm = (hasServices && activeV.services[0].nextKm) ? parseInt(activeV.services[0].nextKm) : (lastKm + 3000);
 
-            document.getElementById('sd-date').textContent = formatDate(svc.date);
-            document.getElementById('sd-km').textContent = svc.km.toLocaleString();
-            
-            const tagsDiv = document.getElementById('sd-work-tags');
-            tagsDiv.innerHTML = svc.work.map(w => `<span class="bg-gray-100 text-gray-800 text-xs px-3 py-1 rounded-lg font-bold border border-gray-200">${w.trim()}</span>`).join('');
+            const status = calculateStatus(nextDate);
+            const content = document.getElementById('notif-content');
+            const totalDuration = nextDate.getTime() - lastDate.getTime();
+            const elapsed = Date.now() - lastDate.getTime();
+            let percent = totalDuration > 0 ? (elapsed / totalDuration) * 100 : 0;
+            percent = Math.max(0, Math.min(100, percent)); 
 
-            document.getElementById('sd-workshop').textContent = svc.workshop || 'Not specified';
-            
-            let reminderTxt = [];
-            if(svc.nextDate) reminderTxt.push(formatDate(svc.nextDate));
-            if(svc.nextKm) reminderTxt.push(parseInt(svc.nextKm).toLocaleString() + ' KM');
-            document.getElementById('sd-reminder').textContent = reminderTxt.length > 0 ? reminderTxt.join(' or ') : 'Standard System Estimate';
+            let barColor = 'bg-green-500';
+            if(percent > 75) barColor = 'bg-yellow-500';
+            if(percent >= 100) barColor = 'bg-red-500';
 
-            const imgContainer = document.getElementById('sd-image-container');
-            const img = document.getElementById('sd-image');
-            if(svc.photo) {
-                img.src = svc.photo;
-                imgContainer.classList.remove('hidden');
-            } else {
-                imgContainer.classList.add('hidden');
-                img.src = '';
-            }
+            let topMsg = (status.label.includes('DUE') || status.label.includes('OVERDUE')) ? 
+                `<div class="bg-red-50 border border-red-100 rounded-xl p-4"><div class="flex items-center gap-3 mb-2"><i class="fas fa-exclamation-circle text-red-500 text-xl"></i><h4 class="font-bold text-red-800 text-sm">Action Required</h4></div><p class="text-xs text-red-600 font-medium">Your <strong>${activeV.model}</strong> is scheduled for maintenance.</p></div>` : 
+                `<div class="bg-green-50 border border-green-100 rounded-xl p-4 flex items-center gap-3"><i class="fas fa-check-circle text-green-500 text-2xl"></i><div><h4 class="font-bold text-green-800 text-sm">All Good!</h4><p class="text-xs text-green-600 mt-0.5">No pending services for ${activeV.model}.</p></div></div>`;
 
-            document.getElementById('service-details-modal').classList.remove('hidden');
+            content.innerHTML = `
+                ${topMsg}
+                <div class="mt-4 bg-gray-50 border border-gray-100 rounded-xl p-4 shadow-sm">
+                    <h5 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center justify-between"><span>Service Timeline</span><i class="fas fa-clock text-gray-300"></i></h5>
+                    <div class="flex justify-between text-xs font-bold text-gray-800 mb-1"><span>Last: ${formatDate(lastDate)}</span><span>Next: ${formatDate(nextDate)}</span></div>
+                    <div class="flex justify-between text-[10px] text-gray-500 mb-3 font-medium"><span>${lastKm.toLocaleString()} KM</span><span>${nextKm.toLocaleString()} KM</span></div>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden shadow-inner"><div class="${barColor} h-full rounded-full transition-all duration-1000 ease-out" style="width: 0%" id="notif-progress-bar"></div></div>
+                    <p class="text-center text-[10px] text-gray-400 mt-2 font-bold">${Math.round(percent)}% to next scheduled service</p>
+                </div>
+            `;
+            document.getElementById('notif-modal').classList.remove('hidden');
+            setTimeout(() => {
+                const bar = document.getElementById('notif-progress-bar');
+                if(bar) bar.style.width = `${percent}%`;
+            }, 50);
         }
 
-        function closeServiceDetails() {
-            document.getElementById('service-details-modal').classList.add('hidden');
-        }
+        function closeNotifications() { document.getElementById('notif-modal').classList.add('hidden'); }
 
-        // Image Compression
+        // ==========================================
+        // UTILITIES & HELPERS
+        // ==========================================
         function compressImage(file, callback) {
             const reader = new FileReader();
             reader.readAsDataURL(file);
@@ -1218,17 +1144,10 @@
                 img.src = event.target.result;
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 800; // slightly larger for documents
-                    let width = img.width;
-                    let height = img.height;
-
-                    if (width > MAX_WIDTH) {
-                        height = Math.round((height * MAX_WIDTH) / width);
-                        width = MAX_WIDTH;
-                    }
-
-                    canvas.width = width;
-                    canvas.height = height;
+                    const MAX_WIDTH = 800; 
+                    let width = img.width; let height = img.height;
+                    if (width > MAX_WIDTH) { height = Math.round((height * MAX_WIDTH) / width); width = MAX_WIDTH; }
+                    canvas.width = width; canvas.height = height;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
                     callback(canvas.toDataURL('image/jpeg', 0.6));
@@ -1236,7 +1155,6 @@
             };
         }
 
-        // Helpers
         function formatDate(dateInput) {
             if(!dateInput) return '--';
             const options = { day: 'numeric', month: 'short', year: 'numeric' };
@@ -1249,40 +1167,91 @@
             const diffTime = nextDate - today;
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             
-            if (diffDays < 0) return { label: '🔴 OVERDUE', desc: 'Maintenance required', classes: 'bg-red-50 text-red-600 border-red-200' };
-            if (diffDays <= 14) return { label: '🟡 DUE SOON', desc: `Service due in ${diffDays} days`, classes: 'bg-yellow-50 text-yellow-600 border-yellow-200' };
-            return { label: '🟢 GOOD', desc: 'Bike health optimal', classes: 'bg-green-50 text-green-600 border-green-200' };
+            // Styled specifically for the dark premium card
+            if (diffDays < 0) return { label: '🔴 OVERDUE', desc: 'Maintenance required', classes: 'bg-red-500/10 text-red-400 border-red-500/20' };
+            if (diffDays <= 14) return { label: '🟡 DUE SOON', desc: `Service due in ${diffDays} days`, classes: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' };
+            return { label: '🟢 OPTIMAL', desc: 'Bike health is good', classes: 'bg-green-500/10 text-green-400 border-green-500/20' };
         }
 
         function switchTab(tabId) {
+            haptic('light'); // Native feel on tab click
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.nav-btn').forEach(btn => {
-                btn.classList.remove('text-black');
+                btn.classList.remove('text-blue-600');
                 btn.classList.add('text-gray-400');
             });
             document.getElementById(`tab-${tabId}`).classList.add('active');
             document.getElementById(`nav-${tabId}`).classList.remove('text-gray-400');
-            document.getElementById(`nav-${tabId}`).classList.add('text-black');
-            window.scrollTo(0,0);
+            document.getElementById(`nav-${tabId}`).classList.add('text-blue-600');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         function bookWorkshop(phoneNum) {
+            haptic('medium');
             const activeV = getActiveVehicle();
             const currentKm = activeV.services.length > 0 ? activeV.services[0].km : activeV.initialKm;
             const message = `Hi, I am ${appData.user.name}. I want to book a service for my bike.\n\nModel: ${activeV.model}\nPlate: ${activeV.plate}\nCurrent KM: ${currentKm}`;
-            const cleanPhone = phoneNum.replace(/[^0-9]/g, '');
+            // Clean phone number but keep the '+' sign for country code
+            const cleanPhone = phoneNum.replace(/[^0-9+]/g, '');
             const encodedMessage = encodeURIComponent(message);
             window.open(`https://wa.me/${cleanPhone}?text=${encodedMessage}`, '_blank');
         }
 
-        function resetApp() {
-            if(confirm("Are you sure you want to clear ALL your profile and service data? This cannot be undone.")) {
-                localStorage.removeItem('tmr_data');
+        // ==========================================
+        // DATA MANAGEMENT
+        // ==========================================
+        function exportData() {
+            haptic('medium');
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "TrackMyRidePro_Backup.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    try {
+                        const importedData = JSON.parse(e.target.result);
+                        if(importedData.vehicles && importedData.user) {
+                            await localforage.setItem('tmr_data', importedData);
+                            haptic('success');
+                            triggerConfetti();
+                            setTimeout(() => {
+                                alert("Garage Data Restored Successfully! App will now reload.");
+                                location.reload();
+                            }, 500);
+                        } else { 
+                            alert("Invalid backup file structure."); 
+                            haptic('heavy');
+                        }
+                    } catch(err) { 
+                        alert("Error reading file."); 
+                        haptic('heavy');
+                    }
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        async function resetApp() {
+            haptic('heavy');
+            if(confirm("⚠️ DANGER ZONE ⚠️\n\nAre you sure you want to completely erase your garage, all vehicles, and all service records? This cannot be undone!")) {
+                await localforage.removeItem('tmr_data');
                 location.reload();
             }
         }
 
+        // ==========================================
+        // UI TOGGLES
+        // ==========================================
         function openCreatorWall() {
+            haptic('light');
             const overlay = document.getElementById('creator-wall-overlay');
             const content = document.getElementById('creator-wall-content');
             overlay.classList.remove('hidden');
@@ -1290,8 +1259,9 @@
             overlay.classList.remove('opacity-0');
             content.classList.remove('scale-95');
         }
-
+        
         function closeCreatorWall() {
+            haptic('light');
             const overlay = document.getElementById('creator-wall-overlay');
             const content = document.getElementById('creator-wall-content');
             overlay.classList.add('opacity-0');
@@ -1303,13 +1273,28 @@
             setTimeout(() => {
                 const splash = document.getElementById('splash-screen');
                 splash.classList.add('opacity-0');
-                setTimeout(() => splash.classList.add('hidden'), 500);
-            }, 1000);
+                setTimeout(() => splash.classList.add('hidden'), 700);
+            }, 1500); // Gives time to appreciate the premium splash screen
         }
 
-        // START
-        window.addEventListener('load', initApp);
+        // ==========================================
+        // APP BOOTSTRAP & PWA REGISTRATION
+        // ==========================================
+        window.addEventListener('load', () => {
+            initApp();
+            
+            // Register Service Worker for PWA Offline capabilities
+            if ('serviceWorker' in navigator) {
+                if (window.location.protocol !== 'file:') {
+                    navigator.serviceWorker.register('./sw.js')
+                        .then(reg => console.log('🚀 TMR Pro ServiceWorker Active', reg.scope))
+                        .catch(err => console.error('ServiceWorker error: ', err));
+                } else {
+                    console.log('🚀 TMR Pro ServiceWorker registration skipped on local file:// protocol');
+                }
+            }
+        });
 
     </script>
 </body>
-                                                                                                                   </html>
+</html>
